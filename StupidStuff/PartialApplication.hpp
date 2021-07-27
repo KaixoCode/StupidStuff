@@ -27,10 +27,11 @@ template<typename Ret>
 struct FunctionImpl<Ret()> {
     template<typename T> 
     FunctionImpl(T&& fun) 
-        : fun(std::forward<T>(fun)) 
-    {}
+        : fun(std::forward<T>(fun)) {}
 
     Ret operator()() { return fun(); }
+
+private: 
     std::function<Ret()> fun;
 };
 
@@ -44,8 +45,7 @@ struct FunctionImpl<Ret(Arg, Args...)> {
 
     template<typename T> 
     FunctionImpl(T&& fun) 
-        : m_Fun(std::forward<T>(fun)) 
-    {}
+        : m_Fun(std::forward<T>(fun)) {}
 
     // << operator for function composition
     template<typename ...Ts> 
