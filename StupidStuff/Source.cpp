@@ -8,36 +8,123 @@
 
 using namespace stupid_stuff;
 
+template<typename T>
+struct ParseResult
+{
+    std::string_view remainder;
+    T result;
+    bool success = false;
+};
+
+template<typename T, typename ...Args>
+using Parser = Function<ParseResult<T>(Args..., std::string_view&)>;
+
+template<typename T, typename R>
+Parser<std::tuple<T, R>> operator>(const Parser<T>& a, const Parser<R>& b)
+{
+    return[a = std::move(a), b = std::move(b)](std::string_view& v)->ParseResult<std::tuple<T, R>>
+    {
+        auto r1 = a(v);
+        auto r2 = b(r1.remainder);
+        if (r1.success && r2.success)
+            return { r2.remainder, { r1.result, r2.result }, true };
+        else return { v };
+    };
+}
+
+template<typename R, typename ...T>
+Parser<std::tuple<T..., R>> operator>(const Parser<std::tuple<T...>>& a, const Parser<R>& b)
+{
+    return[a = std::move(a), b = std::move(b)](std::string_view& v)->ParseResult<std::tuple<T..., R>>
+    {
+        auto r1 = a(v);
+        auto r2 = b(r1.remainder);
+        if (r1.success && r2.success)
+            return { r2.remainder, std::tuple_cat(r1.result, std::tuple<R>{r2.result}), true };
+        else return { v };
+    };
+}
+
+Parser<char, char> character{ [](char c, std::string_view& a) -> ParseResult<char> {
+    if (a[0] == c) return { a.substr(1), c, true }; else return { a };
+} };
+
+Parser<std::string, const char*> identifier{ [](const char* c, std::string_view& a) -> ParseResult<std::string> {
+    if (a.rfind(c, 0) == 0)
+        return { a.substr(std::strlen(c)), c, true };
+    else
+        return { a };
+} };
+
+template<typename T>
+Parser<std::vector<T>, Parser<T>> many{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
+    ParseResult<T> res;
+    std::vector<T> all;
+    std::string_view rem = v;
+    do {
+        res = p(rem);
+        if (res.success)
+            all.push_back(res.result), rem = res.remainder;
+    } while (res.success);
+    return { rem, all, true };
+} };
+
+template<typename T>
+Parser<std::vector<T>, Parser<T>> many1{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
+    ParseResult<T> res;
+    std::vector<T> all;
+    std::string_view rem = v;
+    do {
+        res = p(rem);
+        if (res.success)
+            all.push_back(res.result), rem = res.remainder;
+    } while (res.success);
+    return { rem, all, true };
+} };
+
+
+int MyAdd(const Thing& a, Thing& b, const Thing& c) {
+    return a.v + b.v + c.v;
+}
 
 int main()
 {
-    
+    //std::string_view dafea{ "apple" };
+    //bool vaefa= dafea.rfind("apple", 0) == 0;
 
+    //Parser<std::tuple<std::vector<std::string>, char>>
+    //parseApple = many<std::string>(identifier("apple")) > character('a');
 
-    int av = 1;
-    int bv = 2;
-    int cv = 3;
-    int dv = 4;
+    //std::string_view carrot = "a";
+    //
+    //std::tuple<std::vector<std::string>, char> res13r = parseApple(carrot).result;
 
-    auto aa = Add<int> << av << Sub<int> << Mul<int> << bv << cv << dv;
+    //int av = 1;
+    //int bv = 2;
+    //int cv = 3;
+    //int dv = 4;
 
-    int answer = Negate<int> << Add<int> << av << bv;
-    std::cout << answer << std::endl;
+    //auto aa = Add<int> << av << Sub<int> << Mul<int> << bv << cv << dv;
+    //
+    //int answer = Negate<int> << Add<int> << av << bv;
+    //std::cout << answer << std::endl;
 
-    Function<int(int, int, int)> am = Add<int> << Mul<int>;
-    int res = am(1, 2, 3);
+    //Function<int(int, int, int)> am = Add<int> << Mul<int>;
+    //int res = am(1, 2, 3);
 
-    int ans = Add<int> << 2 << Sub<int> << Mul<int> << 2 << 3 << 1;
+    //int ans = Add<int> << 2 << Sub<int> << Mul<int> << 2 << 3 << 1;
 
     std::function func = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
     Function addThings = func;
-    
+    faster::Function addThingsFast{ &MyAdd };
+
     Thing t1{ 1 };
     Thing t2{ 2 };
     Thing t3{ 3 };
 
     double n = 100000;
 
+    std::cout << "Old Func 3 calls" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -49,29 +136,7 @@ int main()
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
-    start = std::chrono::high_resolution_clock::now();
-    std::vector<int> things{ 4, 5, 3, 2, 1 };
-    for (int i = 0; i < n; i++)
-    {
-        auto resa = Sum<int>(things);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        int res = 0;
-        for (int i = 0; i < things.size(); i++)
-            res += things[i];
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
-
-
+    std::cout << "Old Func 2 calls" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -82,6 +147,7 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
+    std::cout << "Old Func 1 call" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -91,6 +157,40 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
+    std::cout << "New Func 3 calls" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        auto a = addThingsFast(t1);
+        auto b = a(t2);
+        auto c = b(t3);
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+
+    std::cout << "New Func 2 calls" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        auto a = addThingsFast(t1, t2);
+        auto b = a(t3);
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+
+    std::cout << "New Func 1 call" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        auto a = addThingsFast(t1, t2, t3);
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+    
+    std::cout << "Lambda 1 call" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {

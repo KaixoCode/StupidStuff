@@ -1,5 +1,7 @@
 #pragma once
 #include <functional>
+#include <any>
+
 namespace stupid_stuff
 {
     template<typename> struct _GetFunctionImpl;
@@ -21,7 +23,9 @@ namespace stupid_stuff
 
     // Check for compatible types, remove reference/const and check if same type.
     template<typename T1, typename T2>
-    constexpr bool CompatibleType = (std::is_same_v<std::remove_const_t<std::remove_reference_t<T1>>, std::remove_const_t<std::remove_reference_t<T2>>>);
+    constexpr bool CompatibleType = (std::is_same_v<std::remove_const_t<std::remove_reference_t<T1>>, 
+        std::remove_const_t<std::remove_reference_t<T2>>> || std::is_constructible_v<std::remove_const_t<std::remove_reference_t<T1>>, 
+        std::remove_const_t<std::remove_reference_t<T2>>>);
 
     // Function implementation for no arguments
     template<typename Ret>
@@ -76,7 +80,11 @@ namespace stupid_stuff
                 return m_Fun(std::forward<A>(arg));
             else {
                 // Capture the current argument, then generate the sub-function and recursively generate the next one with the Tys
-                struct { Arg v; } _cap{ std::forward<Arg>(arg) };
+                static auto _makeCap = [](A&& arg) -> auto {
+                    if constexpr (std::is_same_v<Arg, A>) { struct { Arg v; } _cap{ std::forward<A>(arg) }; return _cap; }
+                    else { struct { Arg v; } _cap{ Arg{ std::forward<A>(arg) } }; return _cap; };
+                };
+                auto _cap = _makeCap(std::forward<A>(arg));
                 auto _ret = [fun = this->m_Fun, cap = std::move(_cap)](Args&&...args) { return fun(cap.v, std::forward<Args>(args)...); };
                 if constexpr (sizeof...(Tys) == 0) return _ret; // If no Tys exist, return the current version
                 else return Function<Ret(Args...)>{ _ret }(std::forward<Tys>(tys)...); // recurse with Tys
@@ -182,3 +190,106 @@ namespace std {
     function(const _Fx&)->function<typename _Fx::FuncSignature>;
 }
  
+
+
+namespace faster {
+    template<typename T>
+    struct Binder {
+        virtual void Apply(const void* a) = 0;
+        virtual T Finalize() = 0;
+    };
+
+    template<typename Arg>
+    inline const void* ConvertToVoidP(Arg&& arg) {
+        if constexpr (std::is_pointer_v<Arg>)
+            return reinterpret_cast<const void*>(arg);
+        else if constexpr (std::is_reference_v<Arg>)
+            return reinterpret_cast<const void*>(&arg);
+        else
+            return reinterpret_cast<const void*>(new Arg(std::move(arg)));
+    }
+
+    template<typename Arg>
+    inline Arg ConvertFromVoidP(const void* carg) {
+        void* arg = const_cast<void*>(carg);
+        if constexpr (std::is_pointer_v<Arg>)
+            return reinterpret_cast<Arg>(arg);
+        else if constexpr (std::is_reference_v<Arg>)
+            return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
+        else {
+            Arg* a = reinterpret_cast<Arg*>(arg);
+            Arg moved{ std::move(*a) };
+            delete a;
+            return moved;
+        }
+    }
+
+    template<typename Return, typename ...Args>
+    struct FullBinder : public Binder<Return> {
+        Return(*fun)(Args...);
+        std::vector<const void*> tuple;
+
+        FullBinder(Return(*fun)(Args...)) : fun(fun) {}
+
+        inline void Apply(const void* a) override { tuple.push_back(a); };
+
+        inline Return Finalize() override {
+            return CallFun(std::make_index_sequence<sizeof...(Args)>{});
+        }
+
+        template<std::size_t... Is>
+        inline Return CCallFunreate(std::index_sequence<Is...>) {
+            return fun(ConvertFromVoidP<Args>(tuple[Is])...);
+        }
+    };
+
+    template<typename T>
+    struct Function;
+
+    template<typename Ret, std::size_t N, typename... T, std::size_t... I>
+    Function<Ret(std::tuple_element_t<N + I, std::tuple<T...>>...)> _SubSeq(std::index_sequence<I...>) {};
+
+    template<typename Return, typename Arg, typename ...Args>
+    struct Function<Return(Arg, Args...)>
+    {
+        template<size_t N>
+        using SubFunc = std::conditional_t<N == sizeof...(Args), Return,
+            decltype(_SubSeq<Return, N, Args...>(std::make_index_sequence<sizeof...(Args) - N>{}))>;
+
+        Function(Return(*fun)(Arg, Args...)) : binder(new FullBinder<Return, Arg, Args...>{ fun }) {}
+        Function(Binder<Return>* binder) : binder(binder) {}
+
+        template<typename ...Tys>
+        inline SubFunc<sizeof...(Tys)> operator()(Arg&& arg, Tys&& ...tys) {
+            return Apply<Tys...>(std::forward<Arg>(arg), std::forward<Tys>(tys)...);
+        }
+
+        template<typename ...Tys>
+        inline SubFunc<sizeof...(Tys)> Apply(Arg&& arg, Tys&& ...tys) {
+            binder->Apply(ConvertToVoidP<Arg>(std::forward<Arg>(arg)));
+            (binder->Apply(ConvertToVoidP<Tys>(std::forward<Tys>(tys))), ...);
+            if constexpr (sizeof...(Tys) == sizeof...(Args))
+                return binder->Finalize();
+            else
+                return SubFunc<sizeof...(Tys)>{ binder };
+        }
+
+        Binder<Return>* binder;
+    };
+
+    template<typename Return>
+    struct Function<Return()> {
+        Function(Return(*fun)()) : binder(new FullBinder<Return>{ fun }) {}
+        Function(Binder<Return>* binder) : binder(binder) {}
+        ~Function() { delete binder; }
+
+        inline Return operator()() { return Apply(); }
+        inline Return Apply() { return binder->Finalize(); }
+
+        Binder<Return>* binder;
+    };
+
+    // Function call constructor deduction guide for lambdas
+    template <class Ret, class ...Args>
+    Function(Ret(Args...))->Function<Ret(Args...)>;
+}
