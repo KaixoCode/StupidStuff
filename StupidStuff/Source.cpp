@@ -113,14 +113,47 @@ int main()
     //int res = am(1, 2, 3);
 
     //int ans = Add<int> << 2 << Sub<int> << Mul<int> << 2 << 3 << 1;
+    {
+        faster::Function test1 = [](Thing& a, Thing& b, int c) -> int { return a.v + b.v + c; };
+        
+        Thing t1{ 4 };
+        Thing t2{ 1 };
+        Thing t3{ 3 };
+        Thing t10{ 10 };
+
+        auto addto4 = test1(t1);
+        auto addto1 = test1(t2);
+        auto addto3 = test1(t3);
+
+        auto addto14 = addto4(t10);
+        auto addto11 = addto1(t10);
+        auto addto13 = addto3(t10);
+
+        auto res1 = addto14(1);
+        auto res2 = addto11(2);
+        auto res3 = addto13(3);
+        auto res4 = addto11(4);
+        auto res5 = addto14(5);
+
+        Thing::refcount;
+        int a = 1;
+    }
 
     std::function func = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
     Function addThings = func;
     faster::Function addThingsFast{ &MyAdd };
 
+    faster::Function test = [](int a, int b) { return a + b; };
+    auto refa = test(1);
+    auto fafa = refa(2);
+
     Thing t1{ 1 };
     Thing t2{ 2 };
     Thing t3{ 3 };
+
+    faster::CompareTypes<faster::TList<int>, faster::TList<int, int, bool>>::same;
+
+    auto res = addThingsFast(t1, t2, t3);
 
     double n = 100000;
 
