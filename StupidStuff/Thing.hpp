@@ -17,4 +17,9 @@ struct Thing
     {
         return v == other;
     }
+
+    Thing operator+(const Thing& other) const
+    {
+        return { v + other.v };
+    }
 };

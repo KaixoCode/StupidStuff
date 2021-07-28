@@ -6,36 +6,28 @@
 #include <chrono> 
 #include <type_traits>
 
-int Add(Thing& a, Thing& b, Thing& c)
-{ 
-    return a.v + b.v + c.v; 
-}
+using namespace stupid_stuff;
+
 
 int main()
 {
-    Function add = [](int a, int b) { return a + b; };
-    Function mul = [](int a, int b) { return a * b; };
-    Function sub = [](int a, int b) { return a - b; };
+    
 
-    Function ttt = [](const Function<int(int)>& a, int b) -> int { return a((int)b); };
 
-    Function aae = [](int a) { return a; };
-
-    Function negate = [](int a) { return -a; };
-
-    std::function testf = negate;
     int av = 1;
     int bv = 2;
     int cv = 3;
+    int dv = 4;
 
-    int answer = negate << add(av) << bv;
+    auto aa = Add<int> << av << Sub<int> << Mul<int> << bv << cv << dv;
+
+    int answer = Negate<int> << Add<int> << av << bv;
     std::cout << answer << std::endl;
-    // (int -> int -> int) -> (int -> int -> int) => ((int -> int -> int) -> int -> int)
 
-    Function<int(int, int, int)> am = add << mul;
+    Function<int(int, int, int)> am = Add<int> << Mul<int>;
     int res = am(1, 2, 3);
 
-    int ans = add << 2 << sub << mul << 2 << 3 << 1;
+    int ans = Add<int> << 2 << Sub<int> << Mul<int> << 2 << 3 << 1;
 
     std::function func = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
     Function addThings = func;
@@ -56,6 +48,29 @@ int main()
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
+    std::vector<int> things{ 4, 5, 3, 2, 1 };
+    for (int i = 0; i < n; i++)
+    {
+        auto resa = Sum<int>(things);
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        int res = 0;
+        for (int i = 0; i < things.size(); i++)
+            res += things[i];
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+
+
 
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
@@ -80,15 +95,6 @@ int main()
     for (int i = 0; i < n; i++)
     {
         auto a = func(t1, t2, t3);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        auto a = Add(t1, t2, t3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
