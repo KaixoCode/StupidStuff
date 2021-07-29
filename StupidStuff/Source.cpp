@@ -23,18 +23,30 @@ struct VarDecl
     int value;
 };
 
+struct FunDecl
+{
+    std::string name;
+    std::vector<std::string> args;
+};
+
 struct MyParser : public BasicParser
 {
-    static inline Parser<VarDecl()> decl = 
+    static inline Parser<VarDecl()> deff =
+        Cast<VarDecl>((symbol("var") > identifier));
+
+    static inline Parser<VarDecl()> decl =
         Cast<VarDecl>((symbol("var") > identifier) * (symbol("=") > integer < symbol(";")));
+
+    static inline Parser<FunDecl()> func =
+        Cast<FunDecl>((symbol("function") > identifier) * (symbol("(") > sepBy<std::string, std::string>(identifier, symbol(",")) < symbol(")")));
 };
 
 int main()
 {
     PartialApplicationTests::Run();
 
-    auto carrot = "var carrot = 1000;";
-    auto res = MyParser::decl(carrot).result;
+    auto carrot = "function AppleJuice(carrot, apple)";
+    auto res = MyParser::func(carrot).result;
     
     // Speed testing for all function types
     auto lambda = [](const Thing& a, Thing& b, const Thing& c, int d, int e, int f) -> int { return a.v + b.v + c.v + d + e + f; };

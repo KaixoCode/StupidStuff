@@ -230,6 +230,25 @@ struct BasicParser
         return { rem, all, true };
     } };
 
+    template<typename T, typename R>
+    static inline Parser<std::vector<T>(Parser<T()>, Parser<R()>)> sepBy{ [](Parser<T()> p, Parser<R()> r, std::string_view v) -> ParseResult<std::vector<T>> {
+        ParseResult<T> res;
+        std::vector<T> all;
+        std::string_view rem = v;
+        do {
+            res = p(rem);
+            if (res.success)
+            {
+                all.push_back(res.result), rem = res.remainder;
+                ParseResult<R> res2 = r(rem);
+                if (!res2.success)
+                    break;
+                rem = res2.remainder;
+            }
+        } while (res.success);
+        return { rem, all, true };
+    } };
+
     // Basic Parsers
     static inline Parser<char(bool(*)(char))> satisfy = [](bool(*f)(char), std::string_view v) -> ParseResult<char> {
         if (v.size() > 0 && f(v[0])) return { v.substr(1), v[0], true }; else return { v };
