@@ -123,18 +123,6 @@ Parser<T()> operator|(Parser<T()> a, Parser<T()> b)
     return fun(a, b);
 }
 
-//Parser<TPack<Args...>::type, Parser<T>, Parser<Args...>> fun = [](Parser<T> a, Parser<Args...> b, std::string_view& v) -> ParseResult<TPack<Args...>::type>
-//{
-//    auto r1 = a(v);
-//    if (!r1.success)
-//        return { v };
-//    auto r2 = b(r1.remainder);
-//    if (r2.success)
-//        return r2;
-//    else return { v };
-//};
-//return fun(Parser<T>{ a }, Parser<Args...>{ b });
-
 template<typename T, typename R, typename ...Args>
 Parser<R(Args...)> operator>(Parser<T()> a, Parser<R(Args...)> b)
 {
@@ -225,6 +213,7 @@ Parser<T()> Cast(Parser<Arg()> parser, T(*conv)(const Arg&))
     return fun(parser, conv);
 }
 
+// Parser base
 struct BasicParser
 {
     // Complex parsers
