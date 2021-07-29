@@ -3,10 +3,11 @@
 #include "Async.hpp"
 #include "Thing.hpp"
 #include "PartialApplication.hpp"
+#include "SlowPApp.hpp"
 #include <chrono> 
 #include <type_traits>
 
-using namespace stupid_stuff;
+using namespace faster;
 
 template<typename T>
 struct ParseResult
@@ -113,51 +114,43 @@ int main()
     //int res = am(1, 2, 3);
 
     //int ans = Add<int> << 2 << Sub<int> << Mul<int> << 2 << 3 << 1;
-    {
-        faster::Function test1 = [](Thing& a, Thing& b, int c) -> int { return a.v + b.v + c; };
-        
-        Thing t1{ 4 };
-        Thing t2{ 1 };
-        Thing t3{ 3 };
-        Thing t10{ 10 };
+    //{
+    //    Function test1 = [](Thing& a, Thing& b, int c) -> int { return a.v + b.v + c; };
+    //    
+    //    Thing t1{ 4 };
+    //    Thing t2{ 1 };
+    //    Thing t3{ 3 };
+    //    Thing t10{ 10 };
 
-        auto addto4 = test1(t1);
-        auto addto1 = test1(t2);
-        auto addto3 = test1(t3);
+    //    auto addto4 = test1(t1);
+    //    auto addto1 = test1(t2);
+    //    auto addto3 = test1(t3);
 
-        auto addto14 = addto4(t10);
-        auto addto11 = addto1(t10);
-        auto addto13 = addto3(t10);
+    //    auto addto14 = addto4(t10);
+    //    auto addto11 = addto1(t10);
+    //    auto addto13 = addto3(t10);
 
-        auto res1 = addto14(1);
-        auto res2 = addto11(2);
-        auto res3 = addto13(3);
-        auto res4 = addto11(4);
-        auto res5 = addto14(5);
+    //    auto res1 = addto14(1);
+    //    auto res2 = addto11(2);
+    //    auto res3 = addto13(3);
+    //    auto res4 = addto11(4);
+    //    auto res5 = addto14(5);
 
-        Thing::refcount;
-        int a = 1;
-    }
+    //    Thing::refcount;
+    //    int a = 1;
+    //}
 
-    std::function func = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
-    Function addThings = func;
-    faster::Function addThingsFast{ &MyAdd };
-
-    faster::Function test = [](int a, int b) { return a + b; };
-    auto refa = test(1);
-    auto fafa = refa(2);
+    auto lambda = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
+    std::function func = lambda;
+    Function addThings = lambda;
 
     Thing t1{ 1 };
     Thing t2{ 2 };
     Thing t3{ 3 };
 
-    faster::CompareTypes<faster::TList<int>, faster::TList<int, int, bool>>::same;
+    double n = 1000000;
 
-    auto res = addThingsFast(t1, t2, t3);
-
-    double n = 100000;
-
-    std::cout << "Old Func 3 calls" << std::endl;
+    std::cout << "New Func 3 calls" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -169,7 +162,7 @@ int main()
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
-    std::cout << "Old Func 2 calls" << std::endl;
+    std::cout << "New Func 2 calls" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -180,7 +173,7 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
-    std::cout << "Old Func 1 call" << std::endl;
+    std::cout << "New Func 1 call" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
@@ -189,45 +182,22 @@ int main()
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
-
-    std::cout << "New Func 3 calls" << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        auto a = addThingsFast(t1);
-        auto b = a(t2);
-        auto c = b(t3);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
-    std::cout << "New Func 2 calls" << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        auto a = addThingsFast(t1, t2);
-        auto b = a(t3);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
-    std::cout << "New Func 1 call" << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        auto a = addThingsFast(t1, t2, t3);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
     
-    std::cout << "Lambda 1 call" << std::endl;
+    std::cout << "std::function 1 call" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
         auto a = func(t1, t2, t3);
+    }
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    std::cout << duration.count() / n << std::endl;
+
+    std::cout << "lambda 1 call" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        auto a = lambda(t1, t2, t3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

@@ -7,7 +7,7 @@
 template<typename Arg, typename ...Args>
 struct MyTuple : public MyTuple<Args...>
 {
-    enum { last = 0 };
+    enum { isLast = 0 };
 
     MyTuple(const Arg& a, const Args& ...rest)
         : MyTuple<Args...>(rest...),
@@ -23,7 +23,7 @@ struct MyTuple : public MyTuple<Args...>
 template<typename Arg>
 struct MyTuple<Arg>
 {
-    enum { last = 1 };
+    enum { isLast = 1 };
 
     MyTuple(const Arg& a)
         : arg(a)
@@ -60,7 +60,7 @@ struct Match2
     template<typename Arg, typename ...Args>
     inline bool EqualOne(MyTuple<const Arg&, const Args&...>& tuple, const Arg& arg, const Args&...args)
     {
-        if constexpr (MyTuple<const Arg&, const Args&...>::last)
+        if constexpr (MyTuple<const Arg&, const Args&...>::isLast)
         {
             if (arg == tuple.arg) return true;
             else return false;
