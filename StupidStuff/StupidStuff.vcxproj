@@ -152,7 +152,9 @@
   <ItemGroup>
     <ClInclude Include="Async.hpp" />
     <ClInclude Include="PartialApplication.hpp" />
+    <ClInclude Include="PartialApplicationTests.hpp" />
     <ClInclude Include="SlowPApp.hpp" />
+    <ClInclude Include="TestBase.hpp" />
     <ClInclude Include="Thing.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

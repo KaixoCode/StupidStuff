@@ -35,5 +35,11 @@
     <ClInclude Include="SlowPApp.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="TestBase.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PartialApplicationTests.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
