@@ -65,6 +65,8 @@ namespace faster {
                     return reinterpret_cast<void*>(const_cast<std::remove_const_t<std::remove_reference_t<Arg>>*>(&arg));
                 else
                     return reinterpret_cast<void*>(&arg);
+            else if (sizeof(Arg) < 8)
+                return reinterpret_cast<void*>(arg);
             else {
                 Arg* _ptr = new Arg(std::move(arg));
                 auto _void = reinterpret_cast<void*>(_ptr);
@@ -79,6 +81,8 @@ namespace faster {
                 return reinterpret_cast<Arg>(arg);
             else if constexpr (std::is_reference_v<Arg>)
                 return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
+            else if (sizeof(Arg) < 8)
+                return reinterpret_cast<Arg>(arg);
             else
                 return *reinterpret_cast<Arg*>(arg);
         }

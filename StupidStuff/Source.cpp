@@ -141,7 +141,7 @@ int main()
     //    int a = 1;
     //}
 
-    auto lambda = [](const Thing& a, Thing& b, const Thing& c) -> int { return a.v + b.v + c.v; };
+    auto lambda = [](const Thing& a, Thing& b, const Thing& c, int d, int e, int f) -> int { return a.v + b.v + c.v + d + e + f; };
     std::function func = lambda;
     Function addThings = lambda;
 
@@ -151,24 +151,29 @@ int main()
 
     double n = 1000000;
 
-    std::cout << "New Func 3 calls" << std::endl;
+    std::cout << "New Func 6 calls" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
         auto a = addThings(t1);
         auto b = a(t2);
         auto c = b(t3);
+        auto d = c(1);
+        auto e = d(2);
+        auto f = e(3);
     }
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
-    std::cout << "New Func 2 calls" << std::endl;
+    std::cout << "New Func 4 calls" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
         auto a = addThings(t1, t2);
         auto b = a(t3);
+        auto d = b(1, 2);
+        auto e = d(3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
@@ -178,7 +183,7 @@ int main()
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
-        auto a = addThings(t1, t2, t3);
+        auto a = addThings(t1, t2, t3, 1, 2, 3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
@@ -188,7 +193,7 @@ int main()
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
-        auto a = func(t1, t2, t3);
+        auto a = func(t1, t2, t3, 1, 2, 3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
@@ -198,7 +203,7 @@ int main()
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
-        auto a = lambda(t1, t2, t3);
+        auto a = lambda(t1, t2, t3, 1, 2, 3);
     }
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
