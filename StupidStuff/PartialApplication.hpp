@@ -116,9 +116,16 @@ namespace faster {
                     return _ret;
                 } else {
                     dynamic _ret = nullptr;
-                    Arg _arg = Arg{ arg };
-                    std::memcpy(&_ret, &_arg, sizeof(Arg));
-                    return _ret;
+                    if constexpr (std::is_class_v<Arg>)
+                    {
+                        Arg _arg = Arg{ arg };
+                        std::memcpy(&_ret, &_arg, sizeof(Arg));
+                        return _ret;
+                    } else {
+                        Arg _arg = (Arg)arg;
+                        std::memcpy(&_ret, &_arg, sizeof(Arg));
+                        return _ret;
+                    }
                 }
             // In all other cases, allocate object on heap and save ptr to void*
             } else {

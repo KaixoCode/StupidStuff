@@ -7,7 +7,7 @@
 #include <chrono> 
 #include <type_traits>
 #include <cassert>
-//#include "PartialApplicationTests.hpp"
+#include "PartialApplicationTests.hpp"
 #include "Parser.hpp"
 
 struct AppleRes
@@ -31,6 +31,8 @@ struct MyParser : public BasicParser
 
 int main()
 {
+    PartialApplicationTests::Run();
+
     auto carrot = "var carrot = 1000;";
     auto res = MyParser::decl(carrot).result;
     
