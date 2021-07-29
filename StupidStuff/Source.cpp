@@ -52,13 +52,13 @@ Parser<char, char> character{ [](char c, std::string_view& a) -> ParseResult<cha
 
 Parser<std::string, const char*> identifier{ [](const char* c, std::string_view& a) -> ParseResult<std::string> {
     if (a.rfind(c, 0) == 0)
-        return { a.substr(std::strlen(c)), c, true };
+        return { a.substr(strlen(c)), c, true };
     else
         return { a };
 } };
 
 template<typename T>
-Parser<std::vector<T>, Parser<T>> many{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
+Parser<std::vector<T>, const Parser<T>&> many{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
     ParseResult<T> res;
     std::vector<T> all;
     std::string_view rem = v;
@@ -90,13 +90,14 @@ int MyAdd(const Thing& a, Thing& b, const Thing& c) {
 
 int main()
 {
-    //std::string_view dafea{ "apple" };
-    //bool vaefa= dafea.rfind("apple", 0) == 0;
 
-    //Parser<std::tuple<std::vector<std::string>, char>>
-    //parseApple = many<std::string>(identifier("apple")) > character('a');
+    //CompareTypes<TPack<decltype("aa")>, TPack<const char*, int>>::same;
 
-    //std::string_view carrot = "a";
+    //std::is_constructible_v<const char*, decltype("aaa")>;
+
+    //auto parseApple = many<std::string>(identifier("apple")) > character('a');
+
+    //std::string_view carrot = "appleappleapple";
     //
     //std::tuple<std::vector<std::string>, char> res13r = parseApple(carrot).result;
 

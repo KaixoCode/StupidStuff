@@ -158,8 +158,8 @@ namespace faster {
 
         ~Function() { m_Binder->m_RefCount--; if (m_Binder->m_RefCount == 0) delete m_Binder; }
 
-        template<typename ...Tys, typename = std::enable_if_t<CompareTypes<TPack<Tys...>, TPack<Arg, Args...>>::same>>
-        inline _SubFunction<sizeof...(Tys) - 1, Return, Args...> operator()(Tys&& ...tys) {
+        template<typename ...Tys, typename = std::enable_if_t<CompareTypes<TPack<Arg, Args...>, TPack<Tys...>>::same>>
+        inline _SubFunction<sizeof...(Tys) - 1, Return, Args...> operator()(Tys&& ...tys) const {
             // Edge case when calling with all parameters
             if constexpr (sizeof...(Tys) - 1 == sizeof...(Args))
                 if (m_Binder->Size() == sizeof...(Tys))
@@ -188,8 +188,8 @@ namespace faster {
         }
 
     private:
-        bool m_Called = false;
-        _Binder<Return>* m_Binder;
+        mutable bool m_Called = false;
+        mutable _Binder<Return>* m_Binder;
     };
 
     // Base case partial application Function class, no arguments
