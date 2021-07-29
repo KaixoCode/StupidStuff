@@ -2,18 +2,6 @@
 #include <functional>
 namespace faster {
     template<size_t N, typename... Ts> using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
-    
-    template<typename... Args_t>
-    using void_t = void;
-
-    template<typename T>
-    std::false_type is_callable_helper(T f, ...);
-
-    template<typename T, typename = void_t<decltype(std::declval<T>()())>>
-    std::true_type is_callable_helper(T f, std::nullptr_t);
-
-    template<typename T>
-    using IsCallable = decltype(is_callable_helper(std::declval<T>(), nullptr));
 
     template<typename T>
     using FullDecay = typename std::remove_pointer_t<std::decay_t<T>>;
