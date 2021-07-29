@@ -8,12 +8,12 @@ struct Thing
     static inline int movecount = 0;
     static inline int copycount = 0;
     static inline int destrcount = 0;
+    Thing() {};
     Thing(int v) : v(v) { constrcount++; refcount++; }
     Thing(Thing&& t) { v = t.v; movecount++; refcount++;  }
     Thing(const Thing& t) { v = t.v; copycount++; refcount++; }
     ~Thing() { destrcount++; refcount--; };
     int v = 0;
-    int x, y, z, d;
 
     bool operator==(const Thing& other) const
     {

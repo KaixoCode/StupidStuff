@@ -3,6 +3,9 @@
 namespace faster {
     template<size_t N, typename... Ts> using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
 
+    template<typename T>
+    using FullDecay = typename std::remove_pointer_t<std::decay_t<T>>;
+
     // Template pack wrapper, empty
     template<typename ...Tys>
     struct TPack {
@@ -46,7 +49,12 @@ namespace faster {
     template<typename T> struct _CompatibleTPacks<void, T> { constexpr static bool same = true; };
 
     // Destructor class, used to delete any type properly
-    struct Destructor { Destructor() { } virtual ~Destructor() { }; };
+    struct Destructor {
+        Destructor() { } 
+        virtual ~Destructor() { };
+        size_t refcount = 1;
+    };
+
     template<typename Type>
     struct TypedDestructor : public Destructor {
         TypedDestructor(Type* t)
@@ -62,10 +70,12 @@ namespace faster {
     // Function binder base class
     template<typename Return>
     struct _Binder {
+        virtual ~_Binder() {}
         virtual inline void Apply(dynamic, size_t) = 0;
         virtual inline Return Finalize() = 0;
         virtual inline _Binder<Return>* Copy() = 0;
         virtual inline size_t Size() const = 0;
+        virtual inline Destructor** Destructors() = 0;
 
     protected:
         size_t m_RefCount = 0;
@@ -73,81 +83,60 @@ namespace faster {
 
         template<typename Ty, typename Arg>
         inline dynamic _ConvertToDynamic(Ty&& arg, Destructor** toDelete, size_t index) {
-            if constexpr (std::is_reference_v<Ty> && std::is_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> &&
-                !std::is_same_v<std::remove_const_t<std::remove_reference_t<Arg>>, std::remove_const<std::remove_reference_t<Ty>>>) {
-                using RealType = std::remove_const_t<std::remove_reference_t<Arg>>;
-                RealType* _ptr = new RealType(arg);
-                auto _void = reinterpret_cast<dynamic>(_ptr);
-                if (toDelete[index] != nullptr)
-                    delete toDelete[index];
-                toDelete[index] = new TypedDestructor<RealType>{ _ptr };
-                return _void;
-            } else if constexpr (std::is_pointer_v<Ty> && (std::is_pointer_v<Arg> || std::is_reference_v<Arg>))
-                return reinterpret_cast<dynamic>(const_cast<std::remove_const_t<std::remove_pointer_t<Ty>>*>(arg));
-            else if constexpr (std::is_reference_v<Ty> && (std::is_pointer_v<Arg> || std::is_reference_v<Arg>))
-                return reinterpret_cast<dynamic>(const_cast<std::remove_const_t<std::remove_reference_t<Ty>>*>(&arg));
-            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>) {
-                if constexpr (std::is_pointer_v<Ty>) {
-                    if constexpr (std::is_same_v<std::remove_pointer_t<Ty>, Arg>) {
-                        dynamic _ret = nullptr;
-                        std::memcpy(&_ret, &arg, sizeof(Ty));
-                        return _ret;
-                    } else  {
-                        dynamic _ret = nullptr;
-                        Arg _arg = static_cast<Arg>(*arg);
-                        std::memcpy(&_ret, &_arg, sizeof(Arg));
-                        return _ret;
-                    }
-                } else if constexpr (std::is_reference_v<Ty>) {
-                    if constexpr (std::is_same_v<std::remove_reference_t<Ty>, Arg>) {
-                        dynamic _ret = nullptr;
-                        std::memcpy(&_ret, &arg, sizeof(Ty));
-                        return _ret;
-                    }
-                    else {
-                        dynamic _ret = nullptr;
-                        Arg _arg = static_cast<Arg>(arg);
-                        std::memcpy(&_ret, &_arg, sizeof(Arg));
-                        return _ret;
-                    }
+            constexpr bool _ty_cref = std::is_reference_v<Ty> && std::is_const_v<std::remove_reference_t<Arg>>;
+            constexpr bool _ar_cref = std::is_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>;
+            constexpr bool _ty_ref = std::is_reference_v<Ty> && !_ty_cref;
+            constexpr bool _ar_ref = std::is_reference_v<Arg> && !_ar_cref;
+            constexpr bool _ty_ptr = std::is_pointer_v<Ty>;
+            constexpr bool _ar_ptr = std::is_pointer_v<Arg>;
+            constexpr bool _same = std::is_same_v<FullDecay<Arg>, FullDecay<Ty>>;
+            constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
+
+            // If ty is a ptr, remove any const and convert to void*
+            if constexpr (_ty_ptr && (_ar_ref || _ar_ptr))
+                return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(arg));
+            // If ty is a ref, make it a ptr, remove any const and convert to void*
+            else if constexpr ((_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr))
+                return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(&arg));
+            // If ty is neither, but it fits in a void*, copy memory to a void*
+            else if constexpr (_small) {
+                if constexpr (_same) {
+                    dynamic _ret = nullptr;
+                    std::memcpy(&_ret, &arg, sizeof(Ty));
+                    return _ret;
                 } else {
-                    if constexpr (std::is_same_v<Ty, Arg>) {
-                        dynamic _ret = nullptr;
-                        std::memcpy(&_ret, &arg, sizeof(Ty));
-                        return _ret;
-                    }
-                    else {
-                        dynamic _ret = nullptr;
-                        Arg _arg = static_cast<Arg>(arg);
-                        std::memcpy(&_ret, &_arg, sizeof(Arg));
-                        return _ret;
-                    }
+                    dynamic _ret = nullptr;
+                    Arg _arg = static_cast<Arg>(arg);
+                    std::memcpy(&_ret, &_arg, sizeof(Arg));
+                    return _ret;
                 }
-            } else if constexpr (std::is_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>) {
-                using RealType = std::remove_const_t<std::remove_reference_t<Arg>>;
-                RealType* _ptr = new RealType(std::forward<Ty>(arg));
-                auto _void = reinterpret_cast<dynamic>(_ptr);
-                if (toDelete[index] != nullptr)
-                    delete toDelete[index];
-                toDelete[index] = new TypedDestructor<RealType>{ _ptr };
-                return _void;
+            // In all other cases, allocate object on heap and save ptr to void*
             } else {
-                Arg* _ptr = new Arg(std::forward<Ty>(arg));
+                using RealType = std::remove_const_t<std::remove_reference_t<Arg>>;
+                RealType* _ptr;
+                if constexpr (!_same) _ptr = new RealType(arg);
+                else _ptr = new RealType(std::forward<Ty>(arg));
                 auto _void = reinterpret_cast<dynamic>(_ptr);
                 if (toDelete[index] != nullptr)
-                    delete toDelete[index];
-                toDelete[index] = new TypedDestructor<Arg>{ _ptr };
+                {
+                    (toDelete[index])->refcount -= 1;;
+                    if (toDelete[index]->refcount == 0)
+                        delete toDelete[index];
+                }
+                toDelete[index] = new TypedDestructor<RealType>{ _ptr };
                 return _void;
             }
         }
 
         template<typename Arg>
         inline Arg _ConvertFromDynamic(dynamic arg) {
+            constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
+            
             if constexpr (std::is_pointer_v<Arg>)
                 return reinterpret_cast<Arg>(arg);
             else if constexpr (std::is_reference_v<Arg>)
                 return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
-            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>) {
+            else if constexpr (_small) {
                 Arg _ret;
                 std::memcpy(&_ret, &arg, sizeof(Arg));
                 return _ret;
@@ -164,7 +153,17 @@ namespace faster {
     template<typename Return, typename ...Args>
     struct _FullBinder : public _Binder<Return> {
         _FullBinder(Return(*fun)(Args...)) 
-            : m_Fun(fun) {}
+            : m_Fun(fun) { _InitDestructors(); }
+
+        ~_FullBinder() {
+            for (int i = 0; i < sizeof...(Args); i++) {
+                if (m_Destructors[i] != nullptr) {
+                    m_Destructors[i]->refcount -= 1;
+                    if (m_Destructors[i]->refcount == 0) 
+                        delete m_Destructors[i];
+                }
+            }
+        }
 
         inline void Apply(dynamic a, size_t index) override {
             m_Args[sizeof...(Args) - index] = a;
@@ -180,16 +179,26 @@ namespace faster {
         inline _Binder<Return>* Copy() override {
             _FullBinder<Return, Args...>* _binder = new _FullBinder<Return, Args...>{ m_Fun };
             memcpy(&_binder->m_Args[0], &m_Args[0], sizeof(dynamic) * sizeof...(Args));
+            memcpy(&_binder->m_Destructors[0], &m_Destructors[0], sizeof(dynamic) * sizeof...(Args));
+            for (int i = 0; i < sizeof...(Args); i++) if (m_Destructors[i] != nullptr) m_Destructors[i]->refcount++;
             _binder->m_RefCount = 1;
             return _binder;
         }
 
         inline size_t Size() const { return sizeof...(Args); }
+        inline Destructor** Destructors() override { return m_Destructors; };
 
     private:
         static inline std::make_index_sequence<sizeof...(Args)> m_IndexSeq{};
         Return(*m_Fun)(Args...);
         dynamic m_Args[sizeof...(Args)]; // already binded arguments
+
+        Destructor* m_Destructors[sizeof...(Args)];
+
+        void _InitDestructors() {
+            for (int i = 0; i < sizeof...(Args); i++) 
+                m_Destructors[i] = nullptr;
+        }
 
         // Use pack expansion and an index sequence to cast the arguments back, and then call
         template<std::size_t... Is>
@@ -217,20 +226,18 @@ namespace faster {
 
         template<typename T>
         Function(T t) 
-            : m_Binder(new _FullBinder<Return, Arg, Args...>{ (FunType)t }) { m_Binder->m_RefCount++; _InitDestructors(); }
+            : m_Binder(new _FullBinder<Return, Arg, Args...>{ (FunType)t }) { m_Binder->m_RefCount++; }
 
         Function(FunType fun) 
-            : m_Binder(new _FullBinder<Return, Arg, Args...>{ fun }) { m_Binder->m_RefCount++; _InitDestructors(); }
+            : m_Binder(new _FullBinder<Return, Arg, Args...>{ fun }) { m_Binder->m_RefCount++; }
 
         Function(_Binder<Return>* m_Binder)
-            : m_Binder(m_Binder) { m_Binder->m_RefCount++; _InitDestructors(); }
+            : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
 
         ~Function() { 
             m_Binder->m_RefCount--;
             if (m_Binder->m_RefCount == 0) 
                 delete m_Binder; 
-            for (int i = 0; i < sizeof...(Args) + 1; i++)
-                if (m_Destructors[i] != nullptr) delete m_Destructors[i];
         }
 
         template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Arg, Args...>, TPack<Tys...>>::same>>
@@ -263,18 +270,13 @@ namespace faster {
     private:
         bool m_Called = false;
         _Binder<Return>* m_Binder;
-        Destructor* m_Destructors[sizeof...(Args) + 1];
-
-        void _InitDestructors() {
-            for (int i = 0; i < sizeof...(Args) + 1; i++) m_Destructors[i] = nullptr;
-        }
 
         // Use pack expansion to call the binder for all given arguments
         template<std::size_t N, typename... Tys, std::size_t... Is>
         inline void _ApplyBinder(Tys&& ... tys, std::index_sequence<Is...>) {
             size_t _index = sizeof...(Args) + 2;
             ((_index--, m_Binder->Apply(m_Binder->_ConvertToDynamic<NthTypeOf<Is, Tys...>, NthTypeOf<Is, Arg, Args...>>(
-                std::forward<NthTypeOf<Is, Tys...>>(tys), m_Destructors, _index - 1), _index)), ...);
+                std::forward<NthTypeOf<Is, Tys...>>(tys), m_Binder->Destructors(), _index - 1), _index)), ...);
         }
     };
 

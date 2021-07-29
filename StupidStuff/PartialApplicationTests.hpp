@@ -138,6 +138,43 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		TestPrimitive<long double>();
 	}
 
+	Test(SmallObject) {
+		Thing::refcount = 0;
+		Thing::constrcount = 0;
+		Thing::copycount = 0;
+		{
+			Function fun = [](const Thing& a, const Thing* b, Thing& c, Thing* d, Thing e, Thing f, Thing g) {
+				return a.v + b->v + c.v + d->v + e.v + f.v + g.v;
+			};
 
+			auto random = []() -> int {
+				size_t range = (size_t)std::numeric_limits<int>::max() - (size_t)std::numeric_limits<int>::min() + 1;
+				if (range == 0) range = 1;
+				int num = std::rand() % range + std::numeric_limits<int>::min();
+				return num;
+			};
+
+			For(100000) {
+				Thing a{ random() };
+				Thing b{ random() };
+				Thing c{ random() };
+				Thing d{ random() };
+				Thing e{ random() };
+				Thing f = random();
+				Thing g = random();
+				auto call1 = fun(a);
+				auto call2 = call1(&b);
+				auto call3 = call2(c);
+				auto call4 = call3(&d);
+				auto call5 = call4(e);
+				auto call6 = call5(f);
+				int res = call6(g);
+				Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f.v + (int)g.v));
+			}
+		}
+		Assert(Thing::refcount == 0);
+		Assert(Thing::constrcount == 100000 * 7);
+		Assert(Thing::copycount == 100000 * (1 * 3 + 2)); // 
+	}
 
 };
