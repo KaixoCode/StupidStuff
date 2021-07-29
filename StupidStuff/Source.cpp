@@ -7,105 +7,33 @@
 #include <chrono> 
 #include <type_traits>
 #include <cassert>
+//#include "PartialApplicationTests.hpp"
+#include "Parser.hpp"
 
-using namespace faster;
-
-template<typename T>
-struct ParseResult
+struct AppleRes
 {
-    std::string_view remainder;
-    T result;
-    bool success = false;
+    std::string word1;
+    std::string spaces;
+    std::string word2;
 };
 
-template<typename T, typename ...Args>
-using Parser = Function<ParseResult<T>(Args..., std::string_view&)>;
-
-template<typename T, typename R>
-Parser<std::tuple<T, R>> operator>(const Parser<T>& a, const Parser<R>& b)
+struct VarDecl
 {
-    return[a = std::move(a), b = std::move(b)](std::string_view& v)->ParseResult<std::tuple<T, R>>
-    {
-        auto r1 = a(v);
-        auto r2 = b(r1.remainder);
-        if (r1.success && r2.success)
-            return { r2.remainder, { r1.result, r2.result }, true };
-        else return { v };
-    };
-}
+    std::string name;
+    int value;
+};
 
-template<typename R, typename ...T>
-Parser<std::tuple<T..., R>> operator>(const Parser<std::tuple<T...>>& a, const Parser<R>& b)
+struct MyParser : public BasicParser
 {
-    return[a = std::move(a), b = std::move(b)](std::string_view& v)->ParseResult<std::tuple<T..., R>>
-    {
-        auto r1 = a(v);
-        auto r2 = b(r1.remainder);
-        if (r1.success && r2.success)
-            return { r2.remainder, std::tuple_cat(r1.result, std::tuple<R>{r2.result}), true };
-        else return { v };
-    };
-}
-
-Parser<char, char> character{ [](char c, std::string_view& a) -> ParseResult<char> {
-    if (a[0] == c) return { a.substr(1), c, true }; else return { a };
-} };
-
-Parser<std::string, const char*> identifier{ [](const char* c, std::string_view& a) -> ParseResult<std::string> {
-    if (a.rfind(c, 0) == 0)
-        return { a.substr(strlen(c)), c, true };
-    else
-        return { a };
-} };
-
-template<typename T>
-Parser<std::vector<T>, const Parser<T>&> many{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
-    ParseResult<T> res;
-    std::vector<T> all;
-    std::string_view rem = v;
-    do {
-        res = p(rem);
-        if (res.success)
-            all.push_back(res.result), rem = res.remainder;
-    } while (res.success);
-    return { rem, all, true };
-} };
-
-template<typename T>
-Parser<std::vector<T>, Parser<T>> many1{ [](const Parser<T>& p, std::string_view& v) -> ParseResult<std::vector<T>> {
-    ParseResult<T> res;
-    std::vector<T> all;
-    std::string_view rem = v;
-    do {
-        res = p(rem);
-        if (res.success)
-            all.push_back(res.result), rem = res.remainder;
-    } while (res.success);
-    return { rem, all, true };
-} };
-
-
-int MyAdd(const Thing& a, Thing& b, const Thing& c) {
-    return a.v + b.v + c.v;
-}
-
-#include "PartialApplicationTests.hpp"
+    static inline Parser<VarDecl()> decl = Cast<VarDecl>((symbol("var") > identifier) * (symbol("=") > integer < symbol(";")));
+};
 
 int main()
 {
-    PartialApplicationTests::Run();
-
-    //CompareTypes<TPack<decltype("aa")>, TPack<const char*, int>>::same;
-
-    //std::is_constructible_v<const char*, decltype("aaa")>;
-
-    //auto parseApple = many<std::string>(identifier("apple")) > character('a');
-
-    //std::string_view carrot = "appleappleapple";
-    //
-    //std::tuple<std::vector<std::string>, char> res13r = parseApple(carrot).result;
-
-    //int av = 1;
+    auto carrot = "var carrot = 1000;";
+    auto res = MyParser::decl(carrot).result;
+    
+    int av = 1;
     //int bv = 2;
     //int cv = 3;
     //int dv = 4;

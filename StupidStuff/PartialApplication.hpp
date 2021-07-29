@@ -2,6 +2,18 @@
 #include <functional>
 namespace faster {
     template<size_t N, typename... Ts> using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
+    
+    template<typename... Args_t>
+    using void_t = void;
+
+    template<typename T>
+    std::false_type is_callable_helper(T f, ...);
+
+    template<typename T, typename = void_t<decltype(std::declval<T>()())>>
+    std::true_type is_callable_helper(T f, std::nullptr_t);
+
+    template<typename T>
+    using IsCallable = decltype(is_callable_helper(std::declval<T>(), nullptr));
 
     template<typename T>
     using FullDecay = typename std::remove_pointer_t<std::decay_t<T>>;
@@ -83,21 +95,31 @@ namespace faster {
 
         template<typename Ty, typename Arg>
         inline dynamic _ConvertToDynamic(Ty&& arg, Destructor** toDelete, size_t index) {
+            constexpr bool _ar_fptr = std::is_function_v<std::remove_pointer_t<Arg>>;
             constexpr bool _ty_cref = std::is_reference_v<Ty> && std::is_const_v<std::remove_reference_t<Arg>>;
             constexpr bool _ar_cref = std::is_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>;
             constexpr bool _ty_ref = std::is_reference_v<Ty> && !_ty_cref;
             constexpr bool _ar_ref = std::is_reference_v<Arg> && !_ar_cref;
             constexpr bool _ty_ptr = std::is_pointer_v<Ty>;
             constexpr bool _ar_ptr = std::is_pointer_v<Arg>;
+            constexpr bool _ty_arr = std::is_array_v<std::remove_pointer_t<decltype(&arg)>>;
+            constexpr bool _ty_cns = std::is_const_v< std::remove_reference_t<std::remove_pointer_t<Ty>>>;
             constexpr bool _same = std::is_same_v<FullDecay<Arg>, FullDecay<Ty>>;
             constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
+            constexpr bool _constr = !_same && std::is_constructible_v<Arg, Ty>;
 
             // If ty is a ptr, remove any const and convert to void*
-            if constexpr (_ty_ptr && (_ar_ref || _ar_ptr))
+            if constexpr (_ar_fptr && _same)
+                return (dynamic)arg;
+            else if constexpr (!_constr && _ty_arr)
+                return (dynamic)&arg;
+            else if constexpr (!_constr && _same && _ty_ptr && (_ar_ref || _ar_ptr || _ar_cref))
                 return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(arg));
             // If ty is a ref, make it a ptr, remove any const and convert to void*
-            else if constexpr ((_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr))
+            else if constexpr (!_constr && _ty_cns && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
                 return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(&arg));
+            else if constexpr (!_constr && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
+                return reinterpret_cast<dynamic>(&arg);
             // If ty is neither, but it fits in a void*, copy memory to a void*
             else if constexpr (_small) {
                 if constexpr (_same) {
@@ -106,7 +128,7 @@ namespace faster {
                     return _ret;
                 } else {
                     dynamic _ret = nullptr;
-                    Arg _arg = static_cast<Arg>(arg);
+                    Arg _arg = Arg{ arg };
                     std::memcpy(&_ret, &_arg, sizeof(Arg));
                     return _ret;
                 }
@@ -119,7 +141,7 @@ namespace faster {
                 auto _void = reinterpret_cast<dynamic>(_ptr);
                 if (toDelete[index] != nullptr)
                 {
-                    (toDelete[index])->refcount -= 1;;
+                    (toDelete[index])->refcount -= 1;
                     if (toDelete[index]->refcount == 0)
                         delete toDelete[index];
                 }
@@ -131,8 +153,9 @@ namespace faster {
         template<typename Arg>
         inline Arg _ConvertFromDynamic(dynamic arg) {
             constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
-            
-            if constexpr (std::is_pointer_v<Arg>)
+            constexpr bool _ar_fptr = std::is_function_v<Arg>;
+
+            if constexpr (std::is_pointer_v<Arg> || _ar_fptr)
                 return reinterpret_cast<Arg>(arg);
             else if constexpr (std::is_reference_v<Arg>)
                 return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
@@ -224,7 +247,7 @@ namespace faster {
     struct Function<Return(Arg, Args...)> {
         using FunType = Return(*)(Arg, Args...);
 
-        template<typename T>
+        template<typename T, typename = std::enable_if_t<std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         Function(T t) 
             : m_Binder(new _FullBinder<Return, Arg, Args...>{ (FunType)t }) { m_Binder->m_RefCount++; }
 
@@ -234,6 +257,15 @@ namespace faster {
         Function(_Binder<Return>* m_Binder)
             : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
 
+        Function(const Function<Return(Arg, Args...)>& f) 
+            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
+
+        Function(Function<Return(Arg, Args...)>&& f) 
+            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
+
+        Function(Function<Return(Arg, Args...)>& f) 
+            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
+
         ~Function() { 
             m_Binder->m_RefCount--;
             if (m_Binder->m_RefCount == 0) 
@@ -241,11 +273,7 @@ namespace faster {
         }
 
         template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Arg, Args...>, TPack<Tys...>>::same>>
-        inline _SubFunction<sizeof...(Tys) - 1, Return, Args...> operator()(Tys&& ...tys) {
-            // Edge case when calling with all parameters
-            if constexpr (sizeof...(Tys) - 1 == sizeof...(Args))
-                if (m_Binder->Size() == sizeof...(Tys))
-                    return ((_FullBinder<Return, Tys...>*)m_Binder)->m_Fun(std::forward<Tys>(tys)...);
+        inline _SubFunction<sizeof...(Tys) - 1, Return, Args...> operator()(Tys&& ...tys) const {
             // If it has been previously called, make a copy of the binder to make the new call unique.
             // Unless the call using this binder has been finalized
             if (m_Binder->m_Finalized)
@@ -262,18 +290,16 @@ namespace faster {
             m_Called = true;
             if constexpr (sizeof...(Tys) - 1 == sizeof...(Args))
                 return m_Binder->Finalize();
-            else {
-                m_Called = true;
+            else 
                 return { m_Binder };
-            }
         }
-    private:
-        bool m_Called = false;
-        _Binder<Return>* m_Binder;
+
+        mutable bool m_Called = false;
+        mutable _Binder<Return>* m_Binder;
 
         // Use pack expansion to call the binder for all given arguments
         template<std::size_t N, typename... Tys, std::size_t... Is>
-        inline void _ApplyBinder(Tys&& ... tys, std::index_sequence<Is...>) {
+        inline void _ApplyBinder(Tys&& ... tys, std::index_sequence<Is...>) const {
             size_t _index = sizeof...(Args) + 2;
             ((_index--, m_Binder->Apply(m_Binder->_ConvertToDynamic<NthTypeOf<Is, Tys...>, NthTypeOf<Is, Arg, Args...>>(
                 std::forward<NthTypeOf<Is, Tys...>>(tys), m_Binder->Destructors(), _index - 1), _index)), ...);

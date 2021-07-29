@@ -151,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Async.hpp" />
+    <ClInclude Include="Parser.hpp" />
     <ClInclude Include="PartialApplication.hpp" />
     <ClInclude Include="PartialApplicationTests.hpp" />
     <ClInclude Include="SlowPApp.hpp" />

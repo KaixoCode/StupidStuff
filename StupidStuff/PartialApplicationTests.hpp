@@ -139,10 +139,14 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 	}
 
 	Test(SmallObject) {
+		std::srand(time(nullptr));
 		Thing::refcount = 0;
 		Thing::constrcount = 0;
 		Thing::copycount = 0;
-		{
+		Thing::movecount = 0;
+
+		int n = 100000;
+		{	
 			Function fun = [](const Thing& a, const Thing* b, Thing& c, Thing* d, Thing e, Thing f, Thing g) {
 				return a.v + b->v + c.v + d->v + e.v + f.v + g.v;
 			};
@@ -154,14 +158,14 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				return num;
 			};
 
-			For(100000) {
+			For(n) {
 				Thing a{ random() };
 				Thing b{ random() };
 				Thing c{ random() };
 				Thing d{ random() };
 				Thing e{ random() };
-				Thing f = random();
-				Thing g = random();
+				int f = random();
+				double g = random();
 				auto call1 = fun(a);
 				auto call2 = call1(&b);
 				auto call3 = call2(c);
@@ -169,12 +173,64 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				auto call5 = call4(e);
 				auto call6 = call5(f);
 				int res = call6(g);
-				Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f.v + (int)g.v));
+				Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f + (int) g));
 			}
 		}
 		Assert(Thing::refcount == 0);
-		Assert(Thing::constrcount == 100000 * 7);
-		Assert(Thing::copycount == 100000 * (1 * 3 + 2)); // 
+		Assert(Thing::constrcount == n * 7);
+		Assert(Thing::copycount == n * (1 * 2 + 2 * 1)); // Thing -> Thing = 2 copy, Ty -> Thing = 1 copy
+		Assert(Thing::movecount == 0); // It shouldn't move any
 	}
 
+	Test(MultipleInvocations) {
+		std::srand(time(nullptr));
+		Thing::refcount = 0;
+		Thing::constrcount = 0;
+		Thing::movecount = 0;
+
+		int n = 1000;
+		int m = 100;
+		{
+			Function fun = [](const Thing& a, Thing b, Thing c) { return a.v + b.v + c.v; };
+		
+			auto random = []() -> int {
+				size_t range = (size_t)std::numeric_limits<int>::max() - (size_t)std::numeric_limits<int>::min() + 1;
+				if (range == 0) range = 1;
+				int num = std::rand() % range + std::numeric_limits<int>::min();
+				return num;
+			};
+
+			For(n) {
+				Function addToI = fun(__i);
+				int ti = __i;
+				For(m)
+				{
+					Function addToI2 = addToI(__i);
+					int add = random();
+					int res = addToI2(add);
+					Assert(res == ti + __i + add);
+
+					int add2 = random();
+					int res2 = addToI2(add2);
+					Assert(res2 == ti + __i + add2);
+
+					int add3 = random();
+					int res3 = addToI2(add3);
+					Assert(res3 == ti + __i + add3);
+				}
+			}
+		}
+		Assert(Thing::refcount == 0);
+		Assert(Thing::constrcount == n + n * m * 4);
+		Assert(Thing::movecount == 0); // It shouldn't move any
+	}
+
+
+	Test(Strings)
+	{
+		Function fun = [](const char* c, int a) -> std::string { return c; };
+		const char test[] = "Helloworld";
+		std::string res = fun(test, 1);
+		Assert(res == test);
+	}
 };

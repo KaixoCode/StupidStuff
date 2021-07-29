@@ -41,5 +41,8 @@
     <ClInclude Include="PartialApplicationTests.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Parser.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
