@@ -73,6 +73,10 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				auto call27 = call26(o);
 				T res = call27(p);
 				Assert(res == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
+				T res2 = fun(&a, b, &c, d,
+					e, f, g, h, i, j, k, l, m, n, o, p,
+					e, f, g, h, i, j, k, l, m, n, o, p);
+				Assert(res2 == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
 			}
 			{
 				auto call5 = call4(e+0);
@@ -98,14 +102,19 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				auto call25 = call24(m+0);
 				auto call26 = call25(n+0);
 				auto call27 = call26(o+0);
-				T res = call27(p+0);
+				T res = call27(p + 0);
 				Assert(res == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
+				T res2 = fun(&a, b, &c, d,
+					e + 0, f + 0, g + 0, h + 0, i + 0, j + 0, k + 0, l + 0, m + 0, n + 0, o + 0, p + 0,
+					e + 0, f + 0, g + 0, h + 0, i + 0, j + 0, k + 0, l + 0, m + 0, n + 0, o + 0, p + 0);
+				Assert(res2 == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
 			}
 		}
 	}
 
 	Test(PrimitiveTypes) {
 		std::srand(time(nullptr));
+		_BinderBase::refcount = 0;
 		TestPrimitive<bool>();
 		TestPrimitive<char>();
 		TestPrimitive<signed char>();
@@ -138,7 +147,7 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		TestPrimitive<long double>();
 		Assert(_BinderBase::refcount == 0); // no binders left
 	}
-
+	
 	Test(SmallObject) {
 		std::srand(time(nullptr));
 		Thing::refcount = 0;
@@ -164,7 +173,7 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				Thing a{ random() };
 				Thing b{ random() };
 				Thing c{ random() };
-				Thing d{ random() };
+				Thing d{ random() }; 
 				Thing e{ random() };
 				int f = random();
 				double g = random();
@@ -175,12 +184,14 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 				auto call5 = call4(e);
 				auto call6 = call5(f);
 				int res = call6(g);
-				Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f + (int) g));
+				Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f + (int)g));
+				int res2 = fun(a, &b, c, &d, e, f, g);
+				Assert(res2 == (int)(a.v + b.v + c.v + d.v + e.v + f + (int)g));
 			}
 		}
 		Assert(Thing::refcount == 0);
-		Assert(Thing::constrcount == n * 7);
-		Assert(Thing::copycount == n * (1 * 2 + 2 * 1)); // Thing -> Thing = 2 copy, Ty -> Thing = 1 copy
+		Assert(Thing::constrcount == n * 9);
+		Assert(Thing::copycount == n * (1 * 2 + 2 * 1) * 2); // Thing -> Thing = 2 copy, Ty -> Thing = 1 copy
 		Assert(Thing::movecount == 0); // It shouldn't move any
 		Assert(_BinderBase::refcount == 0); // No binders left
 	}
@@ -248,6 +259,12 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		}
 		{ // std::string to std::string
 			Function fun = [](std::string c) -> std::string { return c; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		} 
+		{ // std::string to std::string&
+			Function fun = [](std::string& c) -> std::string { return c; };
 			std::string test = "Helloworld";
 			std::string res = fun(test);
 			Assert(res == test);
@@ -338,7 +355,7 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		{ // array reference with size
 			Function fun = [](const int(&c)[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
+			int res = fun((const int(&)[5])arr, sizeof(arr));
 			Assert(res == arr[sizeof(arr) - 1]);
 		}
 		{ // array reference passed as pointer
@@ -356,5 +373,35 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 			Assert(res == arr[sizeof(arr) - 1]);
 		}
 		Assert(_BinderBase::refcount == 0);
+	}
+
+
+	struct NonTrivial 
+	{
+		NonTrivial(int v) 
+			: myint(std::make_unique<int>(v)) {}
+		
+		NonTrivial(const NonTrivial& copy)
+			: myint(std::make_unique<int>(copy.Value())) {}
+		
+		int Value() const { return *myint; }
+		std::unique_ptr<int> myint;
+	};
+	int AOINnnon(NonTrivial a)
+	{
+		return a.Value();
+	}
+
+	Test(NonTrivialTypes)
+	{
+		Function fun = [](NonTrivial a, int other) -> int { return a.Value() + other; };
+
+		int size = sizeof(NonTrivial);
+
+		NonTrivial a{ 30 };
+		auto res1 = fun(a);
+		auto res = res1(1);
+		Assert(res == a.Value() + 1);
+
 	}
 };

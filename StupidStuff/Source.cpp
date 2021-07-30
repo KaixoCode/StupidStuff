@@ -1,66 +1,28 @@
 #include <iostream>
-#include "Match.hpp"
-#include "Async.hpp"
 #include "Thing.hpp"
 #include "PartialApplication.hpp"
-#include "SlowPApp.hpp"
 #include <chrono> 
-#include <type_traits>
-#include <cassert>
 #include "PartialApplicationTests.hpp"
-#include "Parser.hpp"
+//#include "Parser.hpp"
 
-struct AppleRes
-{
-    std::string word1;
-    std::string spaces;
-    std::string word2;
-};
-
-struct VarDecl
-{
-    std::string name;
-    int value;
-};
-
-struct FunDecl
-{
-    std::string name;
-    std::vector<std::string> args;
-};
-
-struct MyParser : public BasicParser
-{
-    static inline Parser<VarDecl()> deff =
-        Cast<VarDecl>((symbol("var") > identifier));
-
-    static inline Parser<VarDecl()> decl =
-        Cast<VarDecl>((symbol("var") > identifier) * (symbol("=") > integer < symbol(";")));
-
-    static inline Parser<FunDecl()> func =
-        Cast<FunDecl>((symbol("function") > identifier) * (symbol("(") > sepBy<std::string, std::string>(identifier, symbol(",")) < symbol(")")));
-};
+using namespace faster;
+std::string Apple(std::string a) { return a; }
 
 int main()
 {
-
-    PartialApplicationTests::Run();
-    int vals = 1413;
-    Function<int(int)> a = [=](int b) -> int { return vals + b; };
-    auto res = a(1);
-
-    auto carrot = "function AppleJuice(carrot, apple)";
-
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 1000; i++)
     {
-        auto res = MyParser::func(carrot).result;
+        Function fun = [](int a) { return a; };
+        int a = 1;
+        fun(a);
     }
+    PartialApplicationTests::Run();
+
+    
+    
+    // Speed testing for all function types
+    auto start = std::chrono::high_resolution_clock::now();
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() * 0.000000001 * (1.0 / 1000.0) << std::endl;
-
-    // Speed testing for all function types
     auto lambda = [](const Thing& a, Thing& b, const Thing& c, int d, int e, int f) -> int { return a.v + b.v + c.v + d + e + f; };
     std::function func = lambda;
     Function addThings = lambda;
