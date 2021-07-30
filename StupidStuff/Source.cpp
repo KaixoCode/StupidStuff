@@ -43,7 +43,7 @@ struct MyParser : public BasicParser
 
 int main()
 {
-    PartialApplicationTests::Run();
+    //PartialApplicationTests::Run();
 
     auto carrot = "function AppleJuice(carrot, apple)";
 
