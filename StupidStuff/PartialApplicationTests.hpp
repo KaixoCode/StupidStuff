@@ -535,9 +535,9 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 			Assert(res == test + add);
 		}
 		{ // literal to std::string
-			Function fun = [&](std::string c) -> std::string { return c + add; };
+			Function fun = [&](std::string&& c) -> std::string { return c + add; };
 			const char test[] = "Helloworld";
-			std::string res = fun(test);
+			std::string res = fun(std::string{ test });
 			Assert(res == test + add);
 		}
 		{ // std::string to std::string
@@ -591,7 +591,7 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, size);
+			int res = fun(arr, size);
 			Assert(res == arr[size - 1] + addition);
 		}
 		{ // array passed as pointer
@@ -659,7 +659,6 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int* arrp = arr;
-			a(arrp, size);
 			int res = fun(arrp, size);
 			Assert(res == arr[size - 1] + addition);
 		}
@@ -674,7 +673,6 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		Assert(_BinderBase::refcount == 0);
 	}
 
-	auto a(int* (&&c), size_t size) -> int { return c[size - 1]; };
 
 	struct NonTrivial 
 	{

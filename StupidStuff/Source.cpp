@@ -8,8 +8,47 @@
 using namespace faster;
 std::string Apple(std::string a) { return a; }
 
+void typetest1(int&&) {}
+void typetest2(int&) {}
+void typetest3(const int&) {}
+void typetest4(int) {}
+void typetest5(int*&&) {}
+void typetest6(int*&) {}
+void typetest7(const int*&) {}
+void typetest8(int*) {}
+void typetest9(int(&&a)[5]) {}
+void typetest10(int(&a)[5]) {}
+void typetest11(int[5]) {}
+
+template<typename T>
+void TestType(T&& t) { typetest5(std::forward<T>(t)); };
+
 int main()
 {
+    {
+        int a = 1;
+        int& b = a;
+        const int& c = a;
+        int* d = &a;
+        int*& e = d;
+        int f[5]{ 1, 2, 3, 4, 5 };
+        int(&g)[5] = f;
+        TestType((int(&)[5])f);
+
+        typetest1(1);
+        typetest2(a);
+        typetest3(1), typetest3(a), typetest3(b), typetest3(c);
+        typetest4(1), typetest4(a), typetest4(b), typetest4(c);
+        //typetest5(f), typetest5(g), typetest5(&a), typetest5(f);
+        //typetest6(g);
+        //typetest7();
+        //typetest8();
+        //typetest9();
+        //typetest10();
+        //typetest11();
+    }
+    
+    
     {
         Function fun = [](int a) { return a; };
         int a = 1;

@@ -118,17 +118,52 @@ namespace faster {
 
         /*
         
-        Ty*&& std::is_rvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
-        Ty*&  std::is_lvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
-        Ty*   std::is_pointer_v<Ty>
+        -- if same: 
+        Ty&&         std::is_rvalue_reference_v<Ty>
+        Arg&&, const Arg&, Arg
+                     
+        Ty&          std::is_lvalue_reference_v<Ty>
+        Arg&, const Arg&, Arg
 
-        Ty&&  std::is_rvalue_reference_v<Ty>
-        Ty&   std::is_lvalue_reference_v<Ty>
-        Ty    
+        Ty
+        Arg&&, const Arg&, Arg
+ 
 
-        Ty&&[N] std::is_rvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
-        Ty&[N]  std::is_lvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
-        Ty[N]   std::is_array_v<Ty>
+        Ty*&&        std::is_rvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
+        Arg*&&, const Arg*&, Arg*
+
+        Ty*&         std::is_lvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
+        Arg*&, const Arg*&, Arg*
+
+        Ty*          std::is_pointer_v<Ty>
+        Arg*, const Arg*&, Arg*
+
+        Ty&&[N]      std::is_rvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
+        Ty&[N]       std::is_lvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
+        Ty[N]        std::is_array_v<Ty>
+
+        Arg&&        std::is_rvalue_reference_v<Arg>
+        Ty&&
+
+        Arg&         std::is_lvalue_reference_v<Arg>
+        Ty&
+
+        const Arg&   std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>
+        Ty&&, Ty&, const Ty&
+
+        Arg
+        Ty&&, Ty&, const Ty&
+
+        Arg*&&       std::is_rvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>>
+        Ty*&&, Ty&&[N]
+
+        Arg*&        std::is_lvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>>
+        const Arg*&  std::is_lvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>
+        Arg*         std::is_pointer_v<Arg>
+
+        Arg&&[N]     std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>
+        Arg&[N]      std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>
+        Arg[N]       std::is_array_v<Arg>
 
         */
 
