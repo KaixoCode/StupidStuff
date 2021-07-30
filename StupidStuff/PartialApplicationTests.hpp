@@ -284,97 +284,397 @@ class PartialApplicationTests : public TestBase<PartialApplicationTests> {
 		{ // array
 			Function fun = [](int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array
 			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array
 			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array passed as pointer
 			Function fun = [](int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array passed as pointer
 			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array passed as pointer
 			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array with size
 			Function fun = [](int c[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array with size
 			Function fun = [](const int c[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array with size passed as pointer
 			Function fun = [](int c[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array with size passed as pointer
 			Function fun = [](const int c[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		} 
 		{ // array reference with size
 			Function fun = [](int (&c)[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun(arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array reference with size
 			Function fun = [](const int(&c)[5], size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
-			int res = fun((const int(&)[5])arr, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int size = 5;
+			int res = fun((const int(&)[5])arr, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array reference passed as pointer
 			Function fun = [](int* (&c), size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
 		}
 		{ // array reference passed as pointer
 			Function fun = [](const int* (&c), size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
 			int* arrp = arr;
-			int res = fun(arrp, sizeof(arr));
-			Assert(res == arr[sizeof(arr) - 1]);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // Normal string
+			Function fun = [](const char* c) -> std::string { return c; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		}
+		{ // literal to std::string
+			Function fun = [](std::string c) -> std::string { return c; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		}
+		{ // std::string to std::string
+			Function fun = [](std::string c) -> std::string { return c; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		} 
+		{ // std::string to std::string&
+			Function fun = [](std::string& c) -> std::string { return c; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		}
+		{ // literal to const std::string&
+			Function fun = [](const std::string& c) -> std::string { return c; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		}
+		{ // std::string to const std::string&
+			Function fun = [](const std::string& c) -> std::string { return c; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test);
+		}
+		{ // array
+			Function fun = [](int* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array
+			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array passed as pointer
+			Function fun = [](int* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array passed as pointer
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array passed as pointer
+			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array with size
+			Function fun = [](int c[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array with size
+			Function fun = [](const int c[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array with size passed as pointer
+			Function fun = [](int (c)[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array with size passed as pointer
+			Function fun = [](const int c[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		} 
+		{ // array reference with size
+			Function fun = [](int (&c)[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array reference with size
+			Function fun = [](const int(&c)[5], size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun((const int(&)[5])arr, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array reference passed as pointer
+			Function fun = [](int* (&c), size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		{ // array reference passed as pointer
+			Function fun = [](const int* (&c), size_t size) -> int { return c[size - 1]; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1]);
+		}
+		std::string add = "apple";
+		{ // Normal string
+			Function fun = [&](const char* c) -> std::string { return c + add; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		{ // literal to std::string
+			Function fun = [&](std::string c) -> std::string { return c + add; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		{ // std::string to std::string
+			Function fun = [&](std::string c) -> std::string { return c + add; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		{ // std::string to std::string&
+			Function fun = [&](std::string& c) -> std::string { return c + add; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		{ // literal to const std::string&
+			Function fun = [&](const std::string& c) -> std::string { return c + add; };
+			const char test[] = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		{ // std::string to const std::string&
+			Function fun = [&](const std::string& c) -> std::string { return c + add; };
+			std::string test = "Helloworld";
+			std::string res = fun(test);
+			Assert(res == test + add);
+		}
+		int addition = 10;
+		{ // array
+			Function fun = [&](int* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array
+			Function fun = [&](const int* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array
+			Function fun = [&](const int const* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array passed as pointer
+			Function fun = [&](int* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array passed as pointer
+			Function fun = [&](const int* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array passed as pointer
+			Function fun = [&](const int const* c, size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array with size
+			Function fun = [&](int c[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array with size
+			Function fun = [&](const int c[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array with size passed as pointer
+			Function fun = [&](int c[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array with size passed as pointer
+			Function fun = [&](const int c[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array reference with size
+			Function fun = [&](int(&c)[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun(arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array reference with size
+			Function fun = [&](const int(&c)[5], size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int res = fun((const int(&)[5])arr, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array reference passed as pointer
+			Function fun = [&](int* (&c), size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			a(arrp, size);
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
+		}
+		{ // array reference passed as pointer
+			Function fun = [&](const int* (&c), size_t size) -> int { return c[size - 1] + addition; };
+			int arr[5]{ 1, 2, 3, 4, 5 };
+			int size = 5;
+			int* arrp = arr;
+			int res = fun(arrp, size);
+			Assert(res == arr[size - 1] + addition);
 		}
 		Assert(_BinderBase::refcount == 0);
 	}
 
+	auto a(int* (&&c), size_t size) -> int { return c[size - 1]; };
 
 	struct NonTrivial 
 	{
