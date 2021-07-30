@@ -7,7 +7,7 @@
 #include <chrono> 
 #include <type_traits>
 #include <cassert>
-#include "PartialApplicationTests.hpp"
+//#include "PartialApplicationTests.hpp"
 #include "Parser.hpp"
 
 struct AppleRes
@@ -46,8 +46,16 @@ int main()
     PartialApplicationTests::Run();
 
     auto carrot = "function AppleJuice(carrot, apple)";
-    auto res = MyParser::func(carrot).result;
-    
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 1000; i++)
+    {
+        auto res = MyParser::func(carrot).result;
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() * 0.000000001 * (1.0 / 1000.0) << std::endl;
+
     // Speed testing for all function types
     auto lambda = [](const Thing& a, Thing& b, const Thing& c, int d, int e, int f) -> int { return a.v + b.v + c.v + d + e + f; };
     std::function func = lambda;
@@ -60,7 +68,7 @@ int main()
     double n = 1000000;
 
     std::cout << "New Func 6 calls" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
     {
         auto a = addThings(t1);
@@ -70,8 +78,8 @@ int main()
         auto e = d(2);
         auto f = e(3);
     }
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
     std::cout << "New Func 4 calls" << std::endl;
