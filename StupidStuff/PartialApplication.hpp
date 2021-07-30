@@ -67,10 +67,16 @@ namespace faster {
 
     using dynamic = void*;
 
+    struct _BinderBase
+    {
+        static inline size_t refcount = 0;
+        _BinderBase() { refcount++; }
+        virtual ~_BinderBase() { refcount--; }
+    };
+
     // Function binder base class
     template<typename Return>
-    struct _Binder {
-        virtual ~_Binder() {}
+    struct _Binder : public _BinderBase {
         virtual inline void Apply(dynamic, size_t) = 0;
         virtual inline Return Finalize() = 0;
         virtual inline _Binder<Return>* Copy() = 0;
@@ -91,6 +97,7 @@ namespace faster {
             constexpr bool _ty_ptr = std::is_pointer_v<Ty>;
             constexpr bool _ar_ptr = std::is_pointer_v<Arg>;
             constexpr bool _ty_arr = std::is_array_v<std::remove_pointer_t<decltype(&arg)>>;
+            constexpr bool _ty_aref = std::is_array_v<std::remove_reference_t<Arg>>;
             constexpr bool _ty_cns = std::is_const_v< std::remove_reference_t<std::remove_pointer_t<Ty>>>;
             constexpr bool _same = std::is_same_v<FullDecay<Arg>, FullDecay<Ty>>;
             constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
@@ -106,7 +113,7 @@ namespace faster {
             // If ty is a ref, make it a ptr, remove any const and convert to void*
             else if constexpr (!_constr && _ty_cns && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
                 return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(&arg));
-            else if constexpr (!_constr && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
+            else if constexpr (_ty_aref || !_constr && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
                 return reinterpret_cast<dynamic>(&arg);
             // If ty is neither, but it fits in a void*, copy memory to a void*
             else if constexpr (_small) {
@@ -116,8 +123,7 @@ namespace faster {
                     return _ret;
                 } else {
                     dynamic _ret = nullptr;
-                    if constexpr (std::is_class_v<Arg>)
-                    {
+                    if constexpr (std::is_class_v<Arg>) {
                         Arg _arg = Arg{ arg };
                         std::memcpy(&_ret, &_arg, sizeof(Arg));
                         return _ret;
@@ -209,19 +215,103 @@ namespace faster {
     private:
         static inline std::make_index_sequence<sizeof...(Args)> m_IndexSeq{};
         Return(*m_Fun)(Args...);
-        dynamic m_Args[sizeof...(Args)]; // already binded arguments
+        dynamic m_Args[sizeof...(Args) + 1]; // already binded arguments
 
-        Destructor* m_Destructors[sizeof...(Args)];
+        Destructor* m_Destructors[sizeof...(Args) + 1];
 
         void _InitDestructors() {
             for (int i = 0; i < sizeof...(Args); i++) 
                 m_Destructors[i] = nullptr;
         }
-
+        
         // Use pack expansion and an index sequence to cast the arguments back, and then call
         template<std::size_t... Is>
         inline Return _CallFun(std::index_sequence<Is...>) {
             return m_Fun(this->_ConvertFromDynamic<Args>(m_Args[Is])...);
+        }
+
+        template<typename T> friend class Function;
+    };
+
+    template<typename>
+    struct _LambdaType {
+        enum { size = 0 };
+        using Return = void;
+    };
+
+    template<typename R, typename ...Args>
+    struct _LambdaType<R(Args...)>
+    {
+        enum { size = sizeof...(Args) };
+        using Return = R;
+
+        template<size_t N>
+        using NthArg = NthTypeOf<N, Args...>;
+    };
+
+    template<typename T>
+    using LambdaType = _LambdaType<typename std::_Deduce_signature<T>::type>;
+
+    // Full binder contains all the type info, which allows the Finalize method to cast 
+    // all void pointers back to their original types, to then call the lambda
+    template<typename Lambda>
+    struct _LambdaBinder : public _Binder<typename LambdaType<Lambda>::Return> {
+        using Types = LambdaType<Lambda>;
+
+        _LambdaBinder(const Lambda& fun)
+            : m_Fun(fun) {
+            _InitDestructors();
+        }
+
+        ~_LambdaBinder() {
+            for (int i = 0; i < Types::size; i++) {
+                if (m_Destructors[i] != nullptr) {
+                    m_Destructors[i]->refcount -= 1;
+                    if (m_Destructors[i]->refcount == 0)
+                        delete m_Destructors[i];
+                }
+            }
+        }
+
+        inline void Apply(dynamic a, size_t index) override {
+            m_Args[Types::size - index] = a;
+        };
+
+        // Finalize binding and call the function.
+        inline typename Types::Return Finalize() override {
+            this->m_Finalized = true;
+            return _CallFun(m_IndexSeq);
+        }
+
+        // Deep copy the binder
+        inline _Binder<typename Types::Return>* Copy() override {
+            _LambdaBinder<Lambda>* _binder = new _LambdaBinder<Lambda>{ m_Fun };
+            memcpy(&_binder->m_Args[0], &m_Args[0], sizeof(dynamic) * Types::size);
+            memcpy(&_binder->m_Destructors[0], &m_Destructors[0], sizeof(dynamic) * Types::size);
+            for (int i = 0; i < Types::size; i++) if (m_Destructors[i] != nullptr) m_Destructors[i]->refcount++;
+            _binder->m_RefCount = 1;
+            return _binder;
+        }
+
+        inline size_t Size() const { return Types::size; }
+        inline Destructor** Destructors() override { return m_Destructors; };
+
+    private:
+        static inline std::make_index_sequence<Types::size> m_IndexSeq{};
+        Lambda m_Fun;
+        dynamic m_Args[Types::size + 1]; // already binded arguments
+
+        Destructor* m_Destructors[Types::size + 1];
+
+        void _InitDestructors() {
+            for (int i = 0; i < Types::size; i++)
+                m_Destructors[i] = nullptr;
+        }
+
+        // Use pack expansion and an index sequence to cast the arguments back, and then call
+        template<std::size_t... Is>
+        inline typename Types::Return _CallFun(std::index_sequence<Is...>) {
+            return m_Fun(this->_ConvertFromDynamic<Types::NthArg<Is>>(m_Args[Is])...);
         }
 
         template<typename T> friend class Function;
@@ -242,29 +332,37 @@ namespace faster {
     struct Function<Return(Arg, Args...)> {
         using FunType = Return(*)(Arg, Args...);
 
-        template<typename T, typename = std::enable_if_t<std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
-        Function(T t) 
+        // Capturing lambda constructor
+        template<typename Lambda, typename = typename std::_Deduce_signature<Lambda>::type, 
+            typename = std::enable_if_t<sizeof(Lambda) >= 2>>
+        Function(const Lambda& t)
+            : m_Binder(new _LambdaBinder<Lambda>{ t }) { m_Binder->m_RefCount++; }
+
+        // Lambda constructor
+        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
+        Function(const T& t) 
             : m_Binder(new _FullBinder<Return, Arg, Args...>{ (FunType)t }) { m_Binder->m_RefCount++; }
 
+        // Function pointer constructor
         Function(FunType fun) 
             : m_Binder(new _FullBinder<Return, Arg, Args...>{ fun }) { m_Binder->m_RefCount++; }
 
+        // After-call constructor
         Function(_Binder<Return>* m_Binder)
             : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
 
+        // Copy Constructor
         Function(const Function<Return(Arg, Args...)>& f) 
             : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
 
+        // Move constructor
         Function(Function<Return(Arg, Args...)>&& f) 
-            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
-
-        Function(Function<Return(Arg, Args...)>& f) 
             : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
 
         ~Function() { 
             m_Binder->m_RefCount--;
             if (m_Binder->m_RefCount == 0) 
-                delete m_Binder; 
+                delete m_Binder, m_Binder = nullptr; 
         }
 
         template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Arg, Args...>, TPack<Tys...>>::same>>
@@ -304,11 +402,19 @@ namespace faster {
     // Base case partial application Function class, no arguments
     template<typename Return>
     struct Function<Return()> {
+        using FunType = Return(*)();
+
+        template<typename T, typename = std::enable_if_t<std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
+        Function(T t)
+            : m_Binder(new _FullBinder<Return>{ (FunType)t }) {
+            m_Binder->m_RefCount++;
+        }
+
         Function(Return(*fun)()) 
-            : m_Binder(new _FullBinder<Return>{ fun }) {}
+            : m_Binder(new _FullBinder<Return>{ fun }) { m_Binder->m_RefCount++;}
 
         Function(_Binder<Return>* m_Binder) 
-            : m_Binder(m_Binder) {}
+            : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
 
         ~Function() { delete m_Binder; }
 
