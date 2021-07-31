@@ -50,33 +50,25 @@ namespace fun {
         // Lambda constructor
         template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         Function(const T& t)
-            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ (FunType)t }) { function = t; }
+            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ (FunType)t }) {}
 
         // Function pointer constructor
         Function(FunType fun)
-            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ fun }) {  function = fun; }
+            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ fun }) {}
 
         // Copy Constructor
         Function(const Function<Return(Args...)>& f)
-            : m_Binder(f.m_Binder->Clone()) {
-            if (!f.m_Binder->Lambda()) function = ((BinderType)m_Binder)->function; 
-            else function = nullptr;
-        }
+            : m_Binder(f.m_Binder->Clone()) {}
 
         // Move constructor
         Function(Function<Return(Args...)>&& f)
-            : m_Binder(f.m_Binder->Clone()) {
-            if (!f.m_Binder->Lambda()) function = ((BinderType)m_Binder)->function;
-            else function = nullptr;
-        }
+            : m_Binder(f.m_Binder->Clone()) {}
 
         ~Function() {
             m_Binder->m_RefCount--;
             if (m_Binder->m_RefCount == 0)
                 delete m_Binder, m_Binder = nullptr;
         }
-
-        FunType function = nullptr;
 
         inline Return operator()(Args ...args) const {
             if (!m_Binder->Lambda())
@@ -86,7 +78,7 @@ namespace fun {
         }
 
     private:
-        mutable _FunctionStorageCaller<Return, Args...>* m_Binder;
+        _FunctionStorageCaller<Return, Args...>* m_Binder;
     };
 
     // Function constructor deduction guide for function pointers
