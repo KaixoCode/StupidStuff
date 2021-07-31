@@ -8,7 +8,7 @@ namespace fun {
         virtual ~_FunctionStorageBase() { refcount--; }
 
         inline _FunctionStorageBase* Clone() { m_RefCount++; return this; }
-        virtual inline bool Lambda() { return false; }
+        virtual inline bool Lambda() const { return false; }
 
         size_t m_RefCount = 0;
     };
@@ -27,7 +27,7 @@ namespace fun {
         _TypedFunctionStorage(const T& fun)
             : function(fun) {}
 
-        virtual inline bool Lambda() { return !std::is_same_v<T, Return(*)(Args...)>; }
+        virtual inline bool Lambda() const { return !std::is_same_v<T, Return(*)(Args...)>; }
         virtual Return Call(Args&&...args) override { return function(static_cast<Args&&>(args)...); };
         T function;
     };
