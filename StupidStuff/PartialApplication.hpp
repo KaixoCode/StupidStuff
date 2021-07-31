@@ -388,7 +388,7 @@ namespace faster {
             if constexpr (sizeof...(Tys) == sizeof...(Args) + 1 && _CompatibleTPacks<TPack<Tys...>, TPack<Arg, Args...>>::same) {
                 if (sizeof...(Args) + 1 == m_Binder->Size())
                     if (!m_Binder->Lambda())
-                        return ((_FullBinder<FunType, Return(Arg, Args...)>*)m_Binder)->m_Fun(std::forward<Tys>(tys)...);
+                        return ((_FullBinder<FunType, Return(Tys...)>*)m_Binder)->m_Fun(std::forward<Tys>(tys)...);
             }
             // If it has been previously called, make a copy of the binder to make the new call unique.
             // Unless the call using this binder has been finalized

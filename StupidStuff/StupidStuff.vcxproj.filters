@@ -44,5 +44,11 @@
     <ClInclude Include="Parser.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="FasterFunction.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FasterFunctionTests.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
