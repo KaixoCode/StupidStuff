@@ -190,7 +190,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1]);
 		}
 		{ // array
-			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int res = fun(arr, size);
@@ -213,7 +213,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1]);
 		}
 		{ // array passed as pointer
-			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int* arrp = arr;
@@ -331,7 +331,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1]);
 		}
 		{ // array
-			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int res = fun(arr, size);
@@ -354,7 +354,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1]);
 		}
 		{ // array passed as pointer
-			Function fun = [](const int const* c, size_t size) -> int { return c[size - 1]; };
+			Function fun = [](const int* c, size_t size) -> int { return c[size - 1]; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int* arrp = arr;
@@ -474,7 +474,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1] + addition);
 		}
 		{ // array
-			Function fun = [&](const int const* c, size_t size) -> int { return c[size - 1] + addition; };
+			Function fun = [&](const int* c, size_t size) -> int { return c[size - 1] + addition; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int res = fun(arr, size);
@@ -497,7 +497,7 @@ class FasterFunctionTests : public TestBase<FasterFunctionTests> {
 			Assert(res == arr[size - 1] + addition);
 		}
 		{ // array passed as pointer
-			Function fun = [&](const int const* c, size_t size) -> int { return c[size - 1] + addition; };
+			Function fun = [&](const int* c, size_t size) -> int { return c[size - 1] + addition; };
 			int arr[5]{ 1, 2, 3, 4, 5 };
 			int size = 5;
 			int* arrp = arr;

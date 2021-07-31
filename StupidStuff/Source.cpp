@@ -6,7 +6,49 @@
 #include "FasterFunction.hpp"
 //#include "Parser.hpp"
 
-#include "FasterFunctionTests.hpp"
+//#include "FasterFunctionTests.hpp"
+template<typename T>
+using full_decay = typename std::remove_pointer_t<std::decay_t<T>>;
+template<typename Arg>
+struct TC
+{
+    using This = TC<Arg>;
+    constexpr static inline bool vala = std::is_array_v<Arg>;                                                                                                                                         /* Arg[N]            */
+    constexpr static inline bool valaa = std::is_array_v<std::remove_reference_t<Arg>>;                                                                                                               /* Arg(&&/&)?[N]     */
+    constexpr static inline bool lvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&[N]           */
+    constexpr static inline bool rvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&&[N]          */
+    constexpr static inline bool valar = std::is_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                                   /* Arg&&/&[N]        */
+    constexpr static inline bool clvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&[N]     */
+    constexpr static inline bool crvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&&[N]    */
+    
+    constexpr static inline bool val = std::is_same_v<Arg, full_decay<Arg>> && !This::valaa;                                                                                                          /* Arg               */
+    constexpr static inline bool valr = std::is_reference_v<Arg> && !This::valaa;                                                                                                                     /* Arg&/&&([N]!)     */
+    constexpr static inline bool lval = std::is_lvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&              */
+    constexpr static inline bool nclval = std::is_lvalue_reference_v<Arg> && !std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                          /* !const Arg&       */
+    constexpr static inline bool rval = std::is_rvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&&             */
+    constexpr static inline bool clval = std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&        */
+    constexpr static inline bool crval = std::is_rvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&&       */
+    constexpr static inline bool valp = std::is_pointer_v<std::remove_reference_t<Arg>>;                                                                                                              /* Arg*              */
+    constexpr static inline bool valpr = std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_reference_v<Arg>;                                                                                 /* Arg*(&&/&)        */
+    constexpr static inline bool valpa = std::is_pointer_v<std::remove_reference_t<Arg>>;                                                                                                             /* Arg*(&&/&)?       */
+                                                                                                                                                                                                          
+};
+
+template<typename in, typename out>
+constexpr bool same = std::is_same_v<full_decay<in>, full_decay<out>>;
+
+template<typename in, typename out>
+constexpr bool valid_duo = (same<in, out> && (
+   (TC<out>::val   && (TC<in>::valr || TC<in>::val))        // Arg           : Arg&/&& || Arg
+|| (TC<out>::nclval && (TC<in>::nclval))                    // Arg&          : const! Arg& 
+|| (TC<out>::rval  && (TC<in>::rval || TC<in>::val))        // Arg&&         : Arg&& || Arg
+|| (TC<out>::clval && (TC<in>::valr || TC<in>::val))        // const Arg&    : Arg&/&&([N]!) || Arg
+|| (TC<out>::valp  && (TC<in>::valp || TC<in>::valaa))      // Arg*          : Arg* || Arg(&/&&)?[N]
+|| (TC<out>::vala  && (TC<in>::valpa || TC<in>::valaa))     // Arg[N]        : Arg*(&/&&)? || Arg(&/&&)?[N]
+|| (TC<out>::lvala && (TC<in>::lvala))                      // Arg&[N]       : Arg(&)[N]
+|| (TC<out>::rvala && (TC<in>::rvala))                      // Arg&&[N]      : Arg&&[N]
+|| (TC<out>::clvala && (TC<in>::valaa))                     // const Arg&[N] : Arg(&&/&)?[N]
+));
 
 using namespace faster;
 std::string Apple(std::string a) { return a; }
@@ -18,39 +60,70 @@ void typetest4(int) {}
 void typetest5(int*&&) {}
 void typetest6(int*&) {}
 void typetest7(const int*&) {}
-void typetest8(int*) {}
+void typetest8(int * const) {}
 void typetest9(int(&&a)[5]) {}
 void typetest10(int(&a)[5]) {}
-void typetest11(int[5]) {}
+void typetest11(int(a)[5]) {}
+void typetest12(const int(&a)[5]) {}
+void typetest13(const int(&&a)[5]) {}
+void typetest14(const int(&&a)[5]) {}
 
 template<typename T>
 void TestType(T&& t) { typetest5(std::forward<T>(t)); };
 
 int main()
 {
-    fun::FasterFunctionTests::Run();
+
+    int einf = 1;
+    int* ap = &einf;
+
+    const int aefa[1]{};
+    void* aefa1 = (void*)aefa;
+    const int* const aenfa = (const int* const)aefa1;
+
+    typetest8(aefa);
+
+    TC<const int[4]>::valaa;
+
+    valid_duo<const int[4], int* const>;
+
+    TC<const int(&&)[5]>::rvala;
+
+    using Arg = int;
+    bool Type1 = TC<Arg&&>            ::rval;
+    bool Type2 = TC<Arg&>             ::val;
+    bool Type3 = TC<const Arg&>       ::val;
+    bool Type4 = TC<Arg*>             ::val;
+    bool Type5 = TC<Arg*&&>           ::val;
+    bool Type6 = TC<Arg*&>            ::val;
+    bool Type7 = TC<const Arg*&>      ::val;
+    bool Type8 = TC<Arg*>             ::val;
+    bool Type9 = TC<Arg(&&)[5]>       ::val;
+    bool TypeA = TC<Arg(&)[5]>        ::val;
+    bool TypeB = TC<const Arg(&)[5]>  ::val;
+    bool TypeC = TC<Arg[5]>           ::val;
 
     {
-        //int a = 1;
-        //int& b = a;
-        //const int& c = a;
-        //int* d = &a;
-        //int*& e = d;
-        //int f[5]{ 1, 2, 3, 4, 5 };
-        //int(&g)[5] = f;
+        int a = 1;
+        int& b = a;
+        const int& c = a;
+        int* d = &a;
+        int*& e = d;
+        int f[5]{ 1, 2, 3, 4, 5 };
+        int(&g)[5] = f;
         //TestType((int(&)[5])f);
 
-        //typetest1(1);
-        //typetest2(a);
-        //typetest3(1), typetest3(a), typetest3(b), typetest3(c);
-        //typetest4(1), typetest4(a), typetest4(b), typetest4(c);
+        typetest1(1);
+        typetest2(a);
+        typetest3(1), typetest3(a), typetest3(b), typetest3(c);
+        typetest4(1), typetest4(a), typetest4(b), typetest4(c);
         //typetest5(f), typetest5(g), typetest5(&a), typetest5(f);
         //typetest6(g);
         //typetest7();
         //typetest8();
         //typetest9();
         //typetest10();
-        //typetest11();
+        typetest12(d), typetest12(g), typetest12((int(&&)[5])f), typetest12(e), typetest12(&f);
     }
     
     
@@ -59,7 +132,7 @@ int main()
         int a = 1;
         fun(a);
     }
-    //PartialApplicationTests::Run();
+   // PartialApplicationTests::Run();
 
     
     
