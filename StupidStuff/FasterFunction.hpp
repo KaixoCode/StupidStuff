@@ -39,7 +39,6 @@ namespace fun {
     template<typename Return, typename ...Args>
     struct Function<Return(Args...)> {
         using FunType = Return(*)(Args...);
-        using BinderType = _TypedFunctionStorage<FunType, Return(Args...)>*;
 
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
@@ -71,9 +70,9 @@ namespace fun {
         }
 
         inline Return operator()(Args ...args) const {
-            if (!m_Binder->Lambda())
+            if (!m_Binder->Lambda()) // If not a lambda, we know what to cast to to.
                 return ((_TypedFunctionStorage<FunType, Return(Args...)>*)m_Binder)->function(static_cast<Args&&>(args)...);
-            else
+            else // Otherwise use slightly slower indirect call to virtual function.
                 return m_Binder->Call(static_cast<Args&&>(args)...);
         }
 
