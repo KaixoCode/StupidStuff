@@ -179,16 +179,6 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() / n << std::endl;
 
-    std::cout << "faster Function direct 1 call" << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        auto a = fastThings.function(t1, t2, t3, 1, 2, 3);
-    }
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << duration.count() / n << std::endl;
-
     std::cout << "std::function capture 1 call" << std::endl;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < n; i++)
