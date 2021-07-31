@@ -2,6 +2,7 @@
 #include <functional>
 namespace fun {
     struct _FunctionStorageBase {
+        // Used for testing
         static inline size_t refcount = 0;
         _FunctionStorageBase() { refcount++; m_RefCount++; }
         virtual ~_FunctionStorageBase() { refcount--; }
