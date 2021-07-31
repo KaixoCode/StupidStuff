@@ -4,8 +4,6 @@
 #include <string>
 #include "PartialApplication.hpp"
 
-using namespace faster;
-
 template<typename T>
 struct ParseResult
 {
@@ -21,13 +19,13 @@ struct Parser;
 template<typename Ret, std::size_t N, typename... T, std::size_t... I>
 Parser<Ret(std::tuple_element_t<N + I, std::tuple<T...>>...)> _SubSeqP(std::index_sequence<I...>) {};
 template<size_t N, typename Return, typename ...Args>
-using _SubParser = std::conditional_t < N == sizeof...(Args) + 1, Return,
-    decltype(_SubSeqP<Return, N, Args...>(std::make_index_sequence<sizeof...(Args) - N>{})) > ;
+using _SubParser = std::conditional_t<N == sizeof...(Args), ParseResult<Return>,
+    decltype(_SubSeqP<Return, N == sizeof...(Args) ? 0 : N, Args..., void, void>(std::make_index_sequence<sizeof...(Args) - (N == sizeof...(Args) ? 0 : N) - 1>{})) > ;
 
-template<typename Ret, typename Arg, typename ...Args>
-struct Parser<Ret(Arg, Args...)> : public Function<ParseResult<Ret>(Arg, Args..., std::string_view)>
+template<typename Ret, typename ...Args>
+struct Parser<Ret(Args...)> : public faster::Function<ParseResult<Ret>(Args..., std::string_view)>
 {
-    using Parent = typename Function<ParseResult<Ret>(Arg, Args..., std::string_view)>;
+    using Parent = typename faster::Function<ParseResult<Ret>(Args..., std::string_view)>;
     using Parent::Function;
 
     Parser(Parent&& f)
@@ -40,30 +38,9 @@ struct Parser<Ret(Arg, Args...)> : public Function<ParseResult<Ret>(Arg, Args...
         : Parent(f.m_Binder) {}
 
     //, typename = std::enable_if_t<sizeof...(Tys) == sizeof...(Args) && (CompatibleType<Args, Tys> && ...)>
-    template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Arg, Args...>, TPack<Tys...>>::same>>
-    inline _SubParser<sizeof...(Tys) - 1, Ret, Args...> operator()(Tys&& ...tys) const {
-        return { Parent::operator()(std::forward<Tys>(tys)...) } ;
-    }
-};
-
-template<typename Ret>
-struct Parser<Ret()> : public Function<ParseResult<Ret>(std::string_view)>
-{
-    using Parent = typename Function<ParseResult<Ret>(std::string_view)>;
-    using Parent::Function;
-
-    Parser(Parent&& f)
-        : Parent(f.m_Binder) {}
-
-    Parser(const Parent& f)
-        : Parent(f.m_Binder) {}
-
-    Parser(Parent& f)
-        : Parent(f.m_Binder) {}
-
-    //, typename = std::enable_if_t<sizeof...(Tys) == sizeof...(Args) && (CompatibleType<Args, Tys> && ...)>
-    inline ParseResult<Ret> operator()(std::string_view tys) const {
-        return Parent::operator()(tys);
+    template<typename ...Tys, typename = std::enable_if_t<faster::_CompatibleTPacks<faster::TPack<Tys...>, faster::TPack<Args..., std::string_view>>::same>>
+    inline _SubParser<sizeof...(Tys), Ret, Args..., void> operator()(Tys&& ...tys) const {
+        return Parent::operator()(std::forward<Tys>(tys)...);
     }
 };
 

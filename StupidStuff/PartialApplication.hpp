@@ -30,50 +30,75 @@ namespace faster {
         constexpr static void* value = nullptr;
     };
 
-    // Check for compatible types, remove reference/const and check if same type.
-    template<typename T1, typename T2>
-    constexpr bool CompatibleType = (std::is_same_v<std::remove_const_t<std::remove_reference_t<T1>>,
-        std::remove_const_t<std::remove_reference_t<T2>>> || std::is_constructible_v<std::remove_const_t<std::remove_reference_t<T1>>,
-        std::remove_const_t<std::remove_reference_t<T2>>>);
+    template<typename Arg>
+    struct TC
+    {
+        using This = TC<Arg>;
+        constexpr static inline bool vala = std::is_array_v<Arg>;                                                                                                                                         /* Arg[N]            */
+        constexpr static inline bool valaa = std::is_array_v<std::remove_reference_t<Arg>>;                                                                                                               /* Arg(&&/&)?[N]     */
+        constexpr static inline bool lvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&[N]           */
+        constexpr static inline bool rvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&&[N]          */
+        constexpr static inline bool valar = std::is_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                                   /* Arg&&/&[N]        */
+        constexpr static inline bool clvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&[N]     */
+        constexpr static inline bool crvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&&[N]    */
 
-    // Check for same types, remove reference/const and check if same type.
-    template<typename T1, typename T2>
-    constexpr bool SameType = std::is_same_v<T1, T2>;
+        constexpr static inline bool val = std::is_same_v<Arg, FullDecay<Arg>>;                                                                                                                           /* Arg               */
+        constexpr static inline bool valra = std::is_reference_v<Arg>;                                                                                                                                    /* Arg&/&&([N]!)     */
+        constexpr static inline bool valr = std::is_reference_v<Arg> && !This::valaa;                                                                                                                     /* Arg&/&&([N]!)     */
+        constexpr static inline bool lval = std::is_lvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&              */
+        constexpr static inline bool nclval = std::is_lvalue_reference_v<Arg> && !std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                          /* !const Arg&       */
+        constexpr static inline bool rval = std::is_rvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&&             */
+        constexpr static inline bool clval = std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&        */
+        constexpr static inline bool crval = std::is_rvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&&       */
+        constexpr static inline bool valp = std::is_pointer_v<Arg>;                                                                                                                                       /* Arg*              */
+        constexpr static inline bool valpr = std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_reference_v<Arg>;                                                                                 /* Arg*(&&/&)        */
+        constexpr static inline bool valpa = std::is_pointer_v<std::remove_reference_t<Arg>>;                                                                                                             /* Arg*(&&/&)?       */
 
+        constexpr static inline bool fun = std::is_function_v<FullDecay<Arg>>;
+        constexpr static inline bool funa = std::is_function_v<FullDecay<Arg>> && !This::valr && !This::valp;
+        constexpr static inline bool funp = std::is_function_v<FullDecay<Arg>> && This::valp;
+        constexpr static inline bool funr = std::is_function_v<FullDecay<Arg>> && This::valr;
+        constexpr static inline bool funlr = std::is_function_v<FullDecay<Arg>> && This::lval;
+        constexpr static inline bool funrr = std::is_function_v<FullDecay<Arg>> && This::rval;
+    };
+
+    template<typename in, typename out>
+    constexpr bool Same = std::is_same_v<FullDecay<in>, FullDecay<out>>;
+
+    template<typename in, typename out>
+    constexpr bool ValidDuo = (Same<in, out> && (
+        (TC<out>::val && (TC<in>::valr || TC<in>::val))             // Arg           : Arg&/&& || Arg
+        || (TC<out>::nclval && (TC<in>::nclval))                    // Arg&          : const! Arg& 
+        || (TC<out>::rval && (TC<in>::rval || TC<in>::val))         // Arg&&         : Arg&& || Arg
+        || (TC<out>::clval && (TC<in>::valr || TC<in>::val))        // const Arg&    : Arg&/&&([N]!) || Arg
+        || (TC<out>::valp && (TC<in>::valp || TC<in>::valaa))       // Arg*          : Arg* || Arg(&/&&)?[N]
+        || (TC<out>::vala && (TC<in>::valpa || TC<in>::valaa))      // Arg[N]        : Arg*(&/&&)? || Arg(&/&&)?[N]
+        || (TC<out>::lvala && (TC<in>::lvala))                      // Arg&[N]       : Arg(&)[N]
+        || (TC<out>::rvala && (TC<in>::rvala))                      // Arg&&[N]      : Arg&&[N]
+        || (TC<out>::clvala && (TC<in>::valaa))                     // const Arg&[N] : Arg(&&/&)?[N]
+        || (TC<out>::funa && (TC<in>::fun))                         // Arg(Arg)      : Arg(*/&/&&)?(Arg)
+        || (TC<out>::funp && (TC<in>::fun))                         // Arg(*)(Arg)   : Arg(*/&/&&)?(Arg)
+        || (TC<out>::funlr && (TC<in>::funlr || TC<in>::funa))      // Arg(&)(Arg)   : Arg(&/&&)?(Arg)
+        || (TC<out>::funrr && (TC<in>::funlr || TC<in>::funa))      // Arg(&&)(Arg)  : Arg(&/&&)?(Arg)
+        )) || (std::is_constructible_v<out, in>);
+    
     // Compare 2 TLists, to see if they contain compatible types up to the one with the least types.
     template<typename L1, typename L2>
     struct _CompatibleTPacks : public _CompatibleTPacks<
-        std::conditional_t<L1::isLast || L2::isLast, void, typename L1::Remainder>, 
+        std::conditional_t<L1::isLast || L2::isLast, void, typename L1::Remainder>,
         std::conditional_t<L1::isLast || L2::isLast, void, typename L2::Remainder>> {
         using Parent = _CompatibleTPacks<
             std::conditional_t<L1::isLast || L2::isLast, void, typename L1::Remainder>,
             std::conditional_t<L1::isLast || L2::isLast, void, typename L2::Remainder>>;
-        constexpr static bool same = (CompatibleType<L1::Type, L2::Type>
+        constexpr static bool same = (ValidDuo<L1::Type, L2::Type>
             || std::is_same_v<L1::Type, void> || std::is_same_v<L2::Type, void>
             ) && Parent::same;
-    };
-
-    // Compare 2 TLists, to see if they contain compatible types up to the one with the least types.
-    template<typename L1, typename L2>
-    struct _SameTPacks : public _SameTPacks<
-        std::conditional_t<L1::isLast || L2::isLast, void, typename L1::Remainder>,
-        std::conditional_t<L1::isLast || L2::isLast, void, typename L2::Remainder>> {
-        using Parent = _SameTPacks<
-            std::conditional_t<L1::isLast || L2::isLast, void, typename L1::Remainder>,
-            std::conditional_t<L1::isLast || L2::isLast, void, typename L2::Remainder>>;
-        constexpr static bool same = (SameType<L1::Type, L2::Type>
-            || std::is_same_v<L1::Type, void> || std::is_same_v<L2::Type, void>
-            ) && Parent::same;
-    };
-
+    };    
+    
     // Base cases for the compare, if a void is encountered.
     template<> struct _CompatibleTPacks<void, void> { constexpr static bool same = true; };
     template<typename T> struct _CompatibleTPacks<T, void> { constexpr static bool same = true; };
     template<typename T> struct _CompatibleTPacks<void, T> { constexpr static bool same = true; };
-
-    template<> struct _SameTPacks<void, void> { constexpr static bool same = true; };
-    template<typename T> struct _SameTPacks<T, void> { constexpr static bool same = true; };
-    template<typename T> struct _SameTPacks<void, T> { constexpr static bool same = true; };
 
     // Destructor class, used to delete any type properly
     struct Destructor {
@@ -115,97 +140,15 @@ namespace faster {
         virtual inline Destructor** Destructors() = 0;
 
     protected:
-
-        /*
-        
-        -- if same: 
-        Ty&&         std::is_rvalue_reference_v<Ty>
-        Arg&&, const Arg&, Arg
-                     
-        Ty&          std::is_lvalue_reference_v<Ty>
-        Arg&, const Arg&, Arg
-
-        Ty
-        Arg&&, const Arg&, Arg
- 
-
-        Ty*&&        std::is_rvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
-        Arg*&&, const Arg*&, Arg*
-
-        Ty*&         std::is_lvalue_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>>
-        Arg*&, const Arg*&, Arg*
-
-        Ty*          std::is_pointer_v<Ty>
-        Arg*, const Arg*&, Arg*
-
-        Ty&&[N]      std::is_rvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
-        Ty&[N]       std::is_lvalue_reference_v<Ty> && std::is_array_v<std::remove_reference_t<Ty>>
-        Ty[N]        std::is_array_v<Ty>
-
-        Arg&&        std::is_rvalue_reference_v<Arg>
-        Arg&         std::is_lvalue_reference_v<Arg>
-        const Arg&   std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>
-        Arg
-        Arg*&&       std::is_rvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>>
-        Arg*&        std::is_lvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>>
-        const Arg*&  std::is_lvalue_reference_v<Arg> && std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>
-        Arg*         std::is_pointer_v<Arg>
-        Arg&&[N]     std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>
-        Arg&[N]      std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>
-        const Arg&[N]std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>
-        Arg[N]       std::is_array_v<Arg>
-
-        2 cases:
-        void* = data
-        void* = pointer to data
-
-        for void* = data: 
-        small<Arg>, small<Arg[N]>, small<Arg&&>, small<Arg&&[N]>: return copy(data in void*).
-        Ty&&        Ty*
-        Ty&         Ty&[N]
-        Ty          Ty[N]
-        const Ty&   Ty*&
-                    Ty*&&
-
-        for void* = pointer to data
-
-
-
-        */
-
         // Convert Ty to dynamic (void*), put resulting void* into destructor table at index if it was heap allocated.
         template<typename Ty, typename Arg>
         inline dynamic _ConvertToDynamic(Ty&& arg, Destructor** destructorTable, size_t index) {
-            constexpr bool _ar_fptr = std::is_function_v<std::remove_pointer_t<Arg>>;
-            constexpr bool _ty_cref = std::is_reference_v<Ty> && std::is_const_v<std::remove_reference_t<Arg>>;
-            constexpr bool _ar_cref = std::is_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>>;
-            constexpr bool _ty_ref = std::is_reference_v<Ty> && !_ty_cref;
-            constexpr bool _ty_r2p = std::is_reference_v<Ty> && std::is_pointer_v<std::remove_reference_t<Ty>> && !_ty_cref;
-            constexpr bool _ar_ref = std::is_reference_v<Arg> && !_ar_cref;
-            constexpr bool _ty_ptr = std::is_pointer_v<Ty>;
-            constexpr bool _ar_ptr = std::is_pointer_v<Arg>;
-            constexpr bool _ty_arr = std::is_array_v<std::remove_pointer_t<decltype(&arg)>>;
-            constexpr bool _ty_aref = std::is_array_v<std::remove_reference_t<Arg>>;
-            constexpr bool _ty_cns = std::is_const_v< std::remove_reference_t<std::remove_pointer_t<Ty>>>;
-            constexpr bool _same = std::is_same_v<FullDecay<Arg>, FullDecay<Ty>>;
-            constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
-            constexpr bool _constr = !_same && std::is_constructible_v<Arg, Ty>;
-
-            // If ty is a ptr, convert to void*
-            if constexpr (_ar_fptr && _same || _ty_r2p && _same)
-                return (dynamic)arg;
-            else if constexpr (!_constr && _ty_arr)
+            if constexpr ((TC<Arg>::valra || TC<Arg>::vala) && Same<Ty, Arg>)
                 return (dynamic)&arg;
-            else if constexpr (!_constr && _same && _ty_ptr && (_ar_ref || _ar_ptr || _ar_cref))
-                return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(arg));
-            // If ty is a ref, make it a ptr, remove any const and convert to void*
-            else if constexpr (!_constr && _ty_cns && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
-                return reinterpret_cast<dynamic>(const_cast<FullDecay<Ty>*>(&arg));
-            else if constexpr (_ty_aref || !_constr && _same && (_ty_ref || _ty_cref) && (_ar_ref || _ar_ptr || _ar_cref))
-                return reinterpret_cast<dynamic>(&arg);
-            // If ty is neither, but it fits in a void*, copy memory to a void*
-            else if constexpr (_small) {
-                if constexpr (_same) {
+            else if constexpr (TC<Arg>::valpa && Same<Ty, Arg>)
+                return (dynamic)arg;
+            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>)
+                if constexpr (Same<Ty, Arg>) {
                     // If it is the same and small, just copy memory.
                     dynamic _ret = nullptr;
                     std::memcpy(&_ret, &arg, sizeof(Ty));
@@ -216,19 +159,17 @@ namespace faster {
                     if constexpr (std::is_class_v<Arg>) {
                         Arg _arg = Arg{ arg };
                         std::memcpy(&_ret, &_arg, sizeof(Arg));
-                        return _ret;
                     } else {
                         // Not a class: cast (usually primitive types)
                         Arg _arg = (Arg)arg;
                         std::memcpy(&_ret, &_arg, sizeof(Arg));
-                        return _ret;
                     }
+                    return _ret;
                 }
-            // In all other cases, allocate object on heap and save ptr to void*
-            } else {
+            else {
                 using RealType = std::remove_const_t<std::remove_reference_t<Arg>>;
                 RealType* _ptr;
-                if constexpr (!_same) _ptr = new RealType(arg);
+                if constexpr (!Same<Ty, Arg>) _ptr = new RealType(arg);
                 else _ptr = new RealType(std::forward<Ty>(arg));
                 auto _void = reinterpret_cast<dynamic>(_ptr);
                 if (destructorTable[index] != nullptr)
@@ -245,18 +186,14 @@ namespace faster {
         // Convert void* back to Arg
         template<typename Arg>
         inline Arg _ConvertFromDynamic(dynamic arg) {
-            // Small and trivially copyable/constructable.
-            constexpr bool _small = sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>;
-            constexpr bool _ar_fptr = std::is_function_v<Arg>;
-
             // If function or pointer just reinterpret void*
-            if constexpr (std::is_pointer_v<Arg> || _ar_fptr)
+            if constexpr (std::is_pointer_v<Arg> || std::is_function_v<Arg>)
                 return reinterpret_cast<Arg>(arg);
             // References are converted to pointers when stored, so reinterpret to Arg*, then back to &Arg
             else if constexpr (std::is_reference_v<Arg>)
                 return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
             // If small, copy memory into an Arg object.
-            else if constexpr (_small) {
+            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>) {
                 Arg _ret;
                 std::memcpy(&_ret, &arg, sizeof(Arg));
                 return _ret;
@@ -317,7 +254,7 @@ namespace faster {
         virtual inline bool Lambda() { return !std::is_same_v<T, Return(*)(Args...)>; }
         
         virtual Return Call(Args&&...args) override {
-            return m_Fun(std::forward<Args>(args)...);
+            return m_Fun(static_cast<Args&&>(args)...);
         };
 
     private:
@@ -345,15 +282,15 @@ namespace faster {
     // Get the Function object with the N last arguments
     template<typename Ret, std::size_t N, typename... T, std::size_t... I>
     Function<Ret(std::tuple_element_t<N + I, std::tuple<T...>>...)> _SubSeq(std::index_sequence<I...>) {};
-    template<size_t N, typename Return, typename ... Args>
+    template<size_t N, typename Return, typename ...Args>
     using _SubFunction = std::conditional_t < N == sizeof...(Args), Return,
         decltype(_SubSeq<Return, N, Args...>(std::make_index_sequence<sizeof...(Args) - N>{})) > ;
 
     // Main partial application Function class
-    template<typename Return, typename Arg, typename ...Args>
-    struct Function<Return(Arg, Args...)> {
+    template<typename Return, typename ...Args>
+    struct Function<Return(Args...)> {
         template<size_t N> static inline std::make_index_sequence<N> m_IndexSeq;
-        using FunType = Return(*)(Arg, Args...);
+        using FunType = Return(*)(Args...);
 
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type, 
@@ -364,22 +301,22 @@ namespace faster {
         // Lambda constructor
         template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         Function(const T& t) 
-            : m_Binder(new _FullBinder<FunType, Return(Arg, Args...)>{ (FunType)t }) { m_Binder->m_RefCount++; }
+            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ (FunType)t }) { m_Binder->m_RefCount++; }
 
         // Function pointer constructor
         Function(FunType fun) 
-            : m_Binder(new _FullBinder<FunType, Return(Arg, Args...)>{ fun }) { m_Binder->m_RefCount++; }
+            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ fun }) { m_Binder->m_RefCount++; }
 
         // After-call constructor
         Function(_Binder<Return>* m_Binder)
             : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
 
         // Copy Constructor
-        Function(const Function<Return(Arg, Args...)>& f) 
+        Function(const Function<Return(Args...)>& f) 
             : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
 
         // Move constructor
-        Function(Function<Return(Arg, Args...)>&& f) 
+        Function(Function<Return(Args...)>&& f) 
             : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
 
         ~Function() { 
@@ -388,14 +325,14 @@ namespace faster {
                 delete m_Binder, m_Binder = nullptr; 
         }
 
-        template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Arg, Args...>, TPack<Tys...>>::same>>
-        inline _SubFunction<sizeof...(Tys) - 1, Return, Args...> operator()(Tys&& ...tys) const {
+        template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Tys...>, TPack<Args...>>::same>>
+        inline _SubFunction<sizeof...(Tys), Return, Args...> operator()(Tys&& ...tys) const {
             // Optimization for direct call with all parameters
-            if constexpr (sizeof...(Tys) == sizeof...(Args) + 1 && _CompatibleTPacks<TPack<Tys...>, TPack<Arg, Args...>>::same) {
-                if (sizeof...(Args) + 1 == m_Binder->Size())
+            if constexpr (sizeof...(Tys) == sizeof...(Args)) 
+                if (sizeof...(Args) == m_Binder->Size())
                     if (!m_Binder->Lambda())
-                        return ((_FullBinder<FunType, Return(Tys...)>*)m_Binder)->m_Fun(std::forward<Tys>(tys)...);
-            }
+                        return ((_FullBinder<FunType, Return(Tys...)>*)m_Binder)->m_Fun(static_cast<Tys&&>(tys)...);
+
             // If it has been previously called, make a copy of the binder to make the new call unique.
             // Unless the call using this binder has been finalized
             if (m_Binder->m_Finalized)
@@ -407,9 +344,9 @@ namespace faster {
                 if (_cpy->m_RefCount == 0)
                     delete _cpy; // make sure to delete when refcount reaches 0!
             }
-            _ApplyBinder<0, Tys...>(std::forward<Tys>(tys)..., m_IndexSeq<sizeof...(Tys)>);
+            _ApplyBinder<0, Tys...>(static_cast<Tys&&>(tys)..., m_IndexSeq<sizeof...(Tys)>);
             m_Called = true;
-            if constexpr (sizeof...(Tys) - 1 == sizeof...(Args))
+            if constexpr (sizeof...(Tys) == sizeof...(Args))
                 return m_Binder->Finalize();
             else
                 return { m_Binder };
@@ -418,61 +355,13 @@ namespace faster {
         // Use pack expansion to call the binder for all given arguments
         template<std::size_t N, typename... Tys, std::size_t... Is>
         inline void _ApplyBinder(Tys&& ... tys, std::index_sequence<Is...>&) const {
-            size_t _index = sizeof...(Args) + 1;
-            ((_index--, ((_CallBinder<Return, Arg, Args...>*)m_Binder)->m_Args[_index] = m_Binder->_ConvertToDynamic<NthTypeOf<Is, Tys...>, NthTypeOf<Is, Arg, Args...>>(
-                std::forward<NthTypeOf<Is, Tys...>>(tys), m_Binder->Destructors(), _index)), ...);
+            ((((_CallBinder<Return, Args...>*)m_Binder)->m_Args[sizeof...(Args) - Is - 1] =
+                m_Binder->_ConvertToDynamic<NthTypeOf<Is, Tys...>, NthTypeOf<Is, Args...>>(
+                    static_cast<NthTypeOf<Is, Tys...>&&>(tys), m_Binder->Destructors(), sizeof...(Args) - Is - 1)), ...);
         }
 
         mutable bool m_Called = false;
         mutable _Binder<Return>* m_Binder;
-    };
-
-    // Base case partial application Function class, no arguments
-    template<typename Return>
-    struct Function<Return()> {
-        using FunType = Return(*)();
-
-        // Capturing lambda constructor
-        template<typename T, typename = typename std::_Deduce_signature<T>::type,
-            typename = std::enable_if_t<sizeof(T) >= 2>>
-        Function(const T& t)
-            : m_Binder(new _FullBinder<T, typename std::_Deduce_signature<T>::type>{ t }) { m_Binder->m_RefCount++; }
-
-        // Lambda constructor
-        template<typename T, typename = std::enable_if_t<std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
-        Function(T t)
-            : m_Binder(new _FullBinder<FunType, Return()>{ (FunType)t }) { m_Binder->m_RefCount++; }
-
-        // Function pointer constructor
-        Function(FunType fun)
-            : m_Binder(new _FullBinder<FunType, Return()>{ fun }) { m_Binder->m_RefCount++;}
-
-        // After-call constructor
-        Function(_Binder<Return>* m_Binder) 
-            : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
-
-        // Copy Constructor
-        Function(const Function<Return()>& f)
-            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
-
-        // Move constructor
-        Function(Function<Return()>&& f)
-            : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
-
-        ~Function() {
-            m_Binder->m_RefCount--;
-            if (m_Binder->m_RefCount == 0)
-                delete m_Binder, m_Binder = nullptr;
-        }
-
-        inline Return operator()() {
-            if (!m_Binder->Lambda())
-                return ((_FullBinder<FunType, Return()>*)m_Binder)->m_Fun();
-            else
-                return ((_CallBinder<Return>*)m_Binder)->Call();
-        }
-
-        _Binder<Return>* m_Binder;
     };
 
     // Function constructor deduction guide for function pointers

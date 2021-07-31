@@ -2,17 +2,40 @@
 #include "Thing.hpp"
 #include "PartialApplication.hpp"
 #include <chrono> 
-//#include "PartialApplicationTests.hpp"
-//#include "FasterFunctionTests.hpp"
+#include "PartialApplicationTests.hpp"
+#include "FasterFunctionTests.hpp"
 #include "FasterFunction.hpp"
 #include "Parser.hpp"
 
 using namespace faster;
 
+// Arg           : Arg&/&& || Arg
+// Arg&          : const! Arg& 
+// Arg&&         : Arg&& || Arg
+// const Arg&    : Arg&/&&([N]!) || Arg
+// Arg*          : Arg* || Arg(&/&&)?[N]
+// Arg[N]        : Arg*(&/&&)? || Arg(&/&&)?[N]
+// Arg&[N]       : Arg(&)[N]
+// Arg&&[N]      : Arg&&[N]
+// const Arg&[N] : Arg(&&/&)?[N]
+// Arg(Arg)      : Arg(*/&/&&)?(Arg)
+// Arg(*)(Arg)   : Arg(*/&/&&)?(Arg)
+// Arg(&)(Arg)   : Arg(&/&&)?(Arg)
+// Arg(&&)(Arg)  : Arg(&/&&)?(Arg)
+
+// construct
+// store pointer
+// store reference
+
+
+void aaaaa(const char*) {};
+
+void aaa(void) {};
+
 int main()
 {
-    //PartialApplicationTests::Run();
-    //fun::FasterFunctionTests::Run();
+    PartialApplicationTests::Run();
+    fun::FasterFunctionTests::Run();
 
 
     ValidDuo<bool(char), bool(*)(char)>;
@@ -25,16 +48,6 @@ int main()
     auto aeimf = BasicParser::satisfy(BasicParser::isletter);
 
     
-
-
-
-
-
-
-
-
-
-
     // Speed testing for all function types
     auto start = std::chrono::high_resolution_clock::now();
     auto stop = std::chrono::high_resolution_clock::now();

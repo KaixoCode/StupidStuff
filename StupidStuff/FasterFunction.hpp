@@ -27,7 +27,6 @@ namespace fun {
         _TypedFunctionStorage(const T& fun)
             : function(fun) {}
 
-        virtual inline bool Lambda() const { return !std::is_same_v<T, Return(*)(Args...)>; }
         virtual Return Call(Args&&...args) override { return function(static_cast<Args&&>(args)...); };
         T function;
     };
@@ -40,44 +39,56 @@ namespace fun {
     struct Function<Return(Args...)> {
         using FunType = Return(*)(Args...);
 
+        Function() {};
+
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
             typename = std::enable_if_t<sizeof(T) >= 2>>
         Function(const T& t)
-            : m_Binder(new _TypedFunctionStorage<T, typename std::_Deduce_signature<T>::type>{ t }) {}
+            : m_Storage(new _TypedFunctionStorage<T, typename std::_Deduce_signature<T>::type>{ t }), m_Type(false) {}
 
         // Lambda constructor
         template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         Function(const T& t)
-            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ (FunType)t }) {}
+            : m_Functor((FunType)t) {}
 
         // Function pointer constructor
         Function(FunType fun)
-            : m_Binder(new _TypedFunctionStorage<FunType, Return(Args...)>{ fun }) {}
+            : m_Functor(fun) {}
 
         // Copy Constructor
-        Function(const Function<Return(Args...)>& f)
-            : m_Binder(f.m_Binder->Clone()) {}
+        Function(const Function<Return(Args...)>& f) {
+            if (f.m_Type)
+                m_Functor = f.m_Functor;
+            else
+                m_Storage = f.m_Functor.m_Binder, m_Storage->m_RefCount++;
+        }
 
         // Move constructor
-        Function(Function<Return(Args...)>&& f)
-            : m_Binder(f.m_Binder->Clone()) {}
+        Function(Function<Return(Args...)>&& f) {
+            if (f.m_Type)
+                m_Functor = f.m_Functor, f.m_Functor = nullptr;
+            else
+                m_Storage = f.m_Functor.m_Binder, f.m_Functor.m_Binder = nullptr;
+        }
 
         ~Function() {
-            m_Binder->m_RefCount--;
-            if (m_Binder->m_RefCount == 0)
-                delete m_Binder, m_Binder = nullptr;
+            if (m_Type) return;
+            m_Storage->m_RefCount--;
+            if (m_Storage->m_RefCount == 0)
+                delete m_Storage, m_Storage = nullptr;
         }
 
         inline Return operator()(Args ...args) const {
-            if (!m_Binder->Lambda()) // If not a lambda, we know what to cast to to.
-                return ((_TypedFunctionStorage<FunType, Return(Args...)>*)m_Binder)->function(static_cast<Args&&>(args)...);
-            else // Otherwise use slightly slower indirect call to virtual function.
-                return m_Binder->Call(static_cast<Args&&>(args)...);
+           return m_Type ? m_Functor(static_cast<Args&&>(args)...) : m_Storage->Call(static_cast<Args&&>(args)...);
         }
 
     private:
-        _FunctionStorageCaller<Return, Args...>* m_Binder;
+        bool m_Type = true;
+        union {
+            Return(*m_Functor)(Args...);
+            _FunctionStorageCaller<Return, Args...>* m_Storage;
+        };
     };
 
     // Function constructor deduction guide for function pointers

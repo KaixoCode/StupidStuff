@@ -2,6 +2,7 @@
 #include "TestBase.hpp"
 #include "PartialApplication.hpp"
 #include <time.h>
+#include "Thing.hpp"
 
 namespace faster
 {
@@ -102,9 +103,9 @@ namespace faster
 					auto call25 = call24(m + 0);
 					auto call26 = call25(n + 0);
 					auto call27 = call26(o + 0);
-					T res = call27(p + 0);
+					volatile auto res = call27(p + 0);
 					Assert(res == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
-					T res2 = fun(&a, b, &c, d,
+					auto res2 = fun(&a, b, &c, d,
 						e + 0, f + 0, g + 0, h + 0, i + 0, j + 0, k + 0, l + 0, m + 0, n + 0, o + 0, p + 0,
 						e + 0, f + 0, g + 0, h + 0, i + 0, j + 0, k + 0, l + 0, m + 0, n + 0, o + 0, p + 0);
 					Assert(res2 == (T)((T)a + (T)b + (T)c + (T)d + 2 * ((T)e + (T)f + (T)g + (T)h + (T)i + (T)j + (T)k + (T)l + (T)m + (T)n + (T)o + (T)p)));
@@ -170,28 +171,32 @@ namespace faster
 				};
 
 				For(n) {
-					Thing a{ random() };
+					int a = random();
 					Thing b{ random() };
 					Thing c{ random() };
 					Thing d{ random() };
 					Thing e{ random() };
 					int f = random();
 					double g = random();
-					auto call1 = fun(a);
+					auto call1 = fun(Thing{ a });
 					auto call2 = call1(&b);
 					auto call3 = call2(c);
+					int res2 = fun(Thing{ a }, &b, c, &d, e, f, g);
+					Assert(res2 == (int)(a + b.v + c.v + d.v + e.v + f + (int)g));
 					auto call4 = call3(&d);
+					auto callagain1 = fun(Thing{ a }, &b, c, &d, e, f);
 					auto call5 = call4(e);
 					auto call6 = call5(f);
-					int res = call6(g);
-					Assert(res == (int)(a.v + b.v + c.v + d.v + e.v + f + (int)g));
-					int res2 = fun(a, &b, c, &d, e, f, g);
-					Assert(res2 == (int)(a.v + b.v + c.v + d.v + e.v + f + (int)g));
+					volatile int res = call6(g);
+					Assert(res == (int)(a + b.v + c.v + d.v + e.v + f + (int)g));
+					auto res3 = callagain1(g);
+					(int)res3;
+					Assert(res3 == (int)(a + b.v + c.v + d.v + e.v + f + (int)g));
 				}
 			}
 			Assert(Thing::refcount == 0);
-			Assert(Thing::constrcount == n * 9);
-			Assert(Thing::copycount == n * (1 * 2 + 2 * 1) * 2); // Thing -> Thing = 2 copy, Ty -> Thing = 1 copy
+			Assert(Thing::constrcount == n * 13);
+			Assert(Thing::copycount == n * 9); 
 			Assert(Thing::movecount == 0); // It shouldn't move any
 			Assert(_BinderBase::refcount == 0); // No binders left
 		}
@@ -235,8 +240,9 @@ namespace faster
 					}
 				}
 			}
-			Assert(Thing::refcount == 0);
+			Assert(Thing::refcount == 0); 
 			Assert(Thing::constrcount == n + n * m * 4);
+			Assert(Thing::copycount == 15 * n * m);
 			Assert(Thing::movecount == 0); // It shouldn't move any
 			Assert(_BinderBase::refcount == 0); // No binders left
 		}
@@ -700,6 +706,65 @@ namespace faster
 			auto res = res1(1);
 			Assert(res == a.Value() + 1);
 
+		}
+
+		static int Return99() { return 99; }
+
+		Test(Functions)
+		{
+			Function fun = [](int(a)(void)) { return a(); };
+
+			int(*a1)(void) = []() -> int { return 99; };
+			int res1 = fun(a1);
+			Assert(res1 == 99);
+
+			int(&a2)(void) = Return99;
+			int res2 = fun(a2);
+			Assert(res2 == 99);
+
+			int res3 = fun(Return99);
+			Assert(res3 == 99);
+
+			int res4 = fun([]() -> int { return 99; });
+			Assert(res4 == 99);
+		}
+
+		Test(NoArguments)
+		{
+			{
+				Function fun = []() { return 99; };
+				int res = fun();
+				Assert(res == 99);
+			}
+			{
+				Function fun = []() { return "AppleJuice"; };
+				auto res = fun();
+				Assert(res == "AppleJuice");
+			}
+			{
+				int val = 99;
+				Function fun = [=]() { return val; };
+				int res = fun();
+				Assert(res == val);
+			}
+			{
+				int val = 99;
+				Function fun = [&]() { return val; };
+				int res = fun();
+				Assert(res == val);
+			}
+			{
+				std::string val = "AppleJuice";
+				Function fun = [=]() { return val; };
+				auto res = fun();
+				Assert(res == val);
+			}
+			{
+				std::string val = "AppleJuice";
+				Function fun = [&]() { return val; };
+				auto res = fun();
+				Assert(res == val);
+			}
 		}
 	};
 }
