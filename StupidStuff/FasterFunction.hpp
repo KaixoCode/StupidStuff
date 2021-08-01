@@ -39,7 +39,7 @@ namespace fun {
     struct Function<Return(Args...)> {
         using FunType = Return(*)(Args...);
 
-        Function() {};
+        Function() {}
 
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
@@ -58,22 +58,24 @@ namespace fun {
 
         // Copy Constructor
         Function(const Function<Return(Args...)>& f) {
+            m_Type = f.m_Type;
             if (f.m_Type)
                 m_Functor = f.m_Functor;
             else
-                m_Storage = f.m_Functor.m_Binder, m_Storage->m_RefCount++;
+                m_Storage = f.m_Storage, m_Storage->m_RefCount++;
         }
 
         // Move constructor
         Function(Function<Return(Args...)>&& f) {
+            m_Type = f.m_Type;
             if (f.m_Type)
                 m_Functor = f.m_Functor, f.m_Functor = nullptr;
             else
-                m_Storage = f.m_Functor.m_Binder, f.m_Functor.m_Binder = nullptr;
+                m_Storage = f.m_Storage, f.m_Storage = nullptr;
         }
 
         ~Function() {
-            if (m_Type) return;
+            if (m_Type || m_Storage == nullptr) return;
             m_Storage->m_RefCount--;
             if (m_Storage->m_RefCount == 0)
                 delete m_Storage, m_Storage = nullptr;
@@ -87,7 +89,7 @@ namespace fun {
         bool m_Type = true;
         union {
             Return(*m_Functor)(Args...);
-            _FunctionStorageCaller<Return, Args...>* m_Storage;
+            _FunctionStorageCaller<Return, Args...>* m_Storage = nullptr;
         };
     };
 

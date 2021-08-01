@@ -270,12 +270,6 @@ namespace faster {
         template<typename T> friend class Function;
     };
 
-    template<typename Ret, typename ...Args>
-    struct LambdaType
-    {
-        Ret operator()(Args...) { return Ret{}; };
-    };
-
     template<typename T>
     struct Function;
 
@@ -292,6 +286,8 @@ namespace faster {
         template<size_t N> static inline std::make_index_sequence<N> m_IndexSeq;
         using FunType = Return(*)(Args...);
 
+        Function() {};
+
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type, 
             typename = std::enable_if_t<sizeof(T) >= 2>>
@@ -307,6 +303,33 @@ namespace faster {
         Function(FunType fun) 
             : m_Binder(new _FullBinder<FunType, Return(Args...)>{ fun }) { m_Binder->m_RefCount++; }
 
+        // Capturing lambda constructor
+        template<typename T, typename = typename std::_Deduce_signature<T>::type,
+            typename = std::enable_if_t<sizeof(T) >= 2>>
+        auto operator =(const T& t) {
+            Clean();
+            m_Binder = new _FullBinder<T, typename std::_Deduce_signature<T>::type>{ t };
+            m_Binder->m_RefCount++;
+            return *this;
+        }
+
+        // Lambda constructor
+        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
+        auto operator =(const T& t) {
+            Clean();
+            m_Binder = new _FullBinder<FunType, Return(Args...)>{ (FunType)t };
+            m_Binder->m_RefCount++;
+            return *this;
+        }
+
+        // Function pointer constructor
+        auto operator=(FunType fun) {
+            Clean();
+            m_Binder = new _FullBinder<FunType, Return(Args...)>{ fun };
+            m_Binder->m_RefCount++;
+            return *this;
+        }
+
         // After-call constructor
         Function(_Binder<Return>* m_Binder)
             : m_Binder(m_Binder) { m_Binder->m_RefCount++; }
@@ -319,10 +342,21 @@ namespace faster {
         Function(Function<Return(Args...)>&& f) 
             : m_Binder(f.m_Binder) { m_Binder->m_RefCount++; }
 
+        // Copy Constructor
+        auto operator=(const Function<Return(Args...)>& f) {
+            m_Binder = f.m_Binder;
+            m_Binder->m_RefCount++;
+            return *this;
+        }
+
+        // Move constructor
+        auto operator=(Function<Return(Args...)>&& f) {
+            m_Binder = f.m_Binder;
+            m_Binder->m_RefCount++;
+        }
+
         ~Function() { 
-            m_Binder->m_RefCount--;
-            if (m_Binder->m_RefCount == 0) 
-                delete m_Binder, m_Binder = nullptr; 
+            Clean();
         }
 
         template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Tys...>, TPack<Args...>>::same>>
@@ -360,8 +394,16 @@ namespace faster {
                     static_cast<NthTypeOf<Is, Tys...>&&>(tys), m_Binder->Destructors(), sizeof...(Args) - Is - 1)), ...);
         }
 
+        void Clean() {
+            if (!m_Binder)
+                return;
+            m_Binder->m_RefCount--;
+            if (m_Binder->m_RefCount == 0)
+                delete m_Binder, m_Binder = nullptr;
+        }
+
         mutable bool m_Called = false;
-        mutable _Binder<Return>* m_Binder;
+        mutable _Binder<Return>* m_Binder = nullptr;
     };
 
     // Function constructor deduction guide for function pointers
