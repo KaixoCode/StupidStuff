@@ -31,6 +31,17 @@ namespace fun {
         T function;
     };
 
+    template<typename, typename> struct _MemberFunctionStorage;
+    template<typename T, typename Return, typename ...Args>
+    struct _MemberFunctionStorage<T, Return(Args...)> : public _FunctionStorageCaller<Return, Args...> {
+        _MemberFunctionStorage(Return(T::*function)(Args...), T& obj)
+            : obj(obj), function(function) {}
+
+        virtual Return Call(Args&&...args) override { return (obj.*function)(static_cast<Args&&>(args)...); };
+        T& obj;
+        Return(T::*function)(Args...);
+    };
+
     template<typename T>
     struct Function;
 
@@ -41,6 +52,10 @@ namespace fun {
 
         Function() {}
 
+        template<typename T>
+        Function(Return(T::*a)(Args...), T& t) 
+            : m_Storage(new _MemberFunctionStorage<T, Return(Args...)>{ a, t }), m_Type(false) {}
+        
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
             typename = std::enable_if_t<sizeof(T) >= 2>>
@@ -96,6 +111,10 @@ namespace fun {
     // Function constructor deduction guide for function pointers
     template <class Ret, class ...Args>
     Function(Ret(Args...))->Function<Ret(Args...)>;
+
+    // Function constructor deduction guide for member functions
+    template <class Ret, class T, class ...Args>
+    Function(Ret(T::* a)(Args...), T&)->Function<Ret(Args...)>;
 
     // Function constructor deduction guide for lambdas
     template <class _Fx>

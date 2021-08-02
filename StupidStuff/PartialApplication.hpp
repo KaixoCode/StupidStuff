@@ -34,25 +34,30 @@ namespace faster {
     struct TC
     {
         using This = TC<Arg>;
-        constexpr static inline bool vala = std::is_array_v<Arg>;                                                                                                                                         /* Arg[N]            */
-        constexpr static inline bool valaa = std::is_array_v<std::remove_reference_t<Arg>>;                                                                                                               /* Arg(&&/&)?[N]     */
-        constexpr static inline bool lvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&[N]           */
-        constexpr static inline bool rvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                            /* Arg&&[N]          */
-        constexpr static inline bool valar = std::is_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;                                                                                   /* Arg&&/&[N]        */
-        constexpr static inline bool clvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&[N]     */
-        constexpr static inline bool crvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> && std::is_const_v<std::remove_reference_t<Arg>>;                          /* const Arg&&[N]    */
+        constexpr static inline bool vala = std::is_array_v<Arg>;                                                                /* Arg[N]            */
+        constexpr static inline bool valaa = std::is_array_v<std::remove_reference_t<Arg>>;                                      /* Arg(&&/&)?[N]     */
+        constexpr static inline bool lvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;   /* Arg&[N]           */
+        constexpr static inline bool rvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;   /* Arg&&[N]          */
+        constexpr static inline bool valar = std::is_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>>;          /* Arg&&/&[N]        */
+        constexpr static inline bool clvala = std::is_lvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> 
+            && std::is_const_v<std::remove_reference_t<Arg>>;                                                                    /* const Arg&[N]     */
+        constexpr static inline bool crvala = std::is_rvalue_reference_v<Arg> && std::is_array_v<std::remove_reference_t<Arg>> 
+            && std::is_const_v<std::remove_reference_t<Arg>>;                                                                    /* const Arg&&[N]    */
 
-        constexpr static inline bool val = std::is_same_v<Arg, FullDecay<Arg>>;                                                                                                                           /* Arg               */
-        constexpr static inline bool valra = std::is_reference_v<Arg>;                                                                                                                                    /* Arg&/&&([N]!)     */
-        constexpr static inline bool valr = std::is_reference_v<Arg> && !This::valaa;                                                                                                                     /* Arg&/&&([N]!)     */
-        constexpr static inline bool lval = std::is_lvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&              */
-        constexpr static inline bool nclval = std::is_lvalue_reference_v<Arg> && !std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                          /* !const Arg&       */
-        constexpr static inline bool rval = std::is_rvalue_reference_v<Arg> && !This::valaa;                                                                                                              /* Arg&&             */
-        constexpr static inline bool clval = std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&        */
-        constexpr static inline bool crval = std::is_rvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> && !This::valaa;                                                            /* const Arg&&       */
-        constexpr static inline bool valp = std::is_pointer_v<Arg>;                                                                                                                                       /* Arg*              */
-        constexpr static inline bool valpr = std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_reference_v<Arg>;                                                                                 /* Arg*(&&/&)        */
-        constexpr static inline bool valpa = std::is_pointer_v<std::remove_reference_t<Arg>>;                                                                                                             /* Arg*(&&/&)?       */
+        constexpr static inline bool val = std::is_same_v<Arg, FullDecay<Arg>>;                                                  /* Arg               */
+        constexpr static inline bool valra = std::is_reference_v<Arg>;                                                           /* Arg&/&&([N]!)     */
+        constexpr static inline bool valr = std::is_reference_v<Arg> && !This::valaa;                                            /* Arg&/&&([N]!)     */
+        constexpr static inline bool lval = std::is_lvalue_reference_v<Arg> && !This::valaa;                                     /* Arg&              */
+        constexpr static inline bool nclval = std::is_lvalue_reference_v<Arg> && !std::is_const_v<std::remove_reference_t<Arg>> 
+            && !This::valaa;                                                                                                     /* !const Arg&       */
+        constexpr static inline bool rval = std::is_rvalue_reference_v<Arg> && !This::valaa;                                     /* Arg&&             */
+        constexpr static inline bool clval = std::is_lvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> 
+            && !This::valaa;                                                                                                     /* const Arg&        */
+        constexpr static inline bool crval = std::is_rvalue_reference_v<Arg> && std::is_const_v<std::remove_reference_t<Arg>> 
+            && !This::valaa;                                                                                                     /* const Arg&&       */
+        constexpr static inline bool valp = std::is_pointer_v<Arg>;                                                              /* Arg*              */
+        constexpr static inline bool valpr = std::is_pointer_v<std::remove_reference_t<Arg>> && std::is_reference_v<Arg>;        /* Arg*(&&/&)        */
+        constexpr static inline bool valpa = std::is_pointer_v<std::remove_reference_t<Arg>>;                                    /* Arg*(&&/&)?       */
 
         constexpr static inline bool fun = std::is_function_v<FullDecay<Arg>>;
         constexpr static inline bool funa = std::is_function_v<FullDecay<Arg>> && !This::valr && !This::valp;
@@ -122,7 +127,7 @@ namespace faster {
     struct _BinderBase
     {
         static inline size_t refcount = 0;
-        _BinderBase() { refcount++; }
+        _BinderBase() { refcount++; m_RefCount++; }
         virtual ~_BinderBase() { refcount--; }
 
         virtual inline size_t Size() const = 0;
@@ -142,12 +147,13 @@ namespace faster {
     protected:
         // Convert Ty to dynamic (void*), put resulting void* into destructor table at index if it was heap allocated.
         template<typename Ty, typename Arg>
-        inline dynamic _ConvertToDynamic(Ty&& arg, Destructor** destructorTable, size_t index) {
+        inline dynamic _ConvertToDynamic(Ty&& arg, size_t index) {
             if constexpr ((TC<Arg>::valra || TC<Arg>::vala) && Same<Ty, Arg>)
                 return (dynamic)&arg;
             else if constexpr (TC<Arg>::valpa && Same<Ty, Arg>)
                 return (dynamic)arg;
-            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>)
+            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && 
+                std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>)
                 if constexpr (Same<Ty, Arg>) {
                     // If it is the same and small, just copy memory.
                     dynamic _ret = nullptr;
@@ -172,13 +178,14 @@ namespace faster {
                 if constexpr (!Same<Ty, Arg>) _ptr = new RealType(arg);
                 else _ptr = new RealType(std::forward<Ty>(arg));
                 auto _void = reinterpret_cast<dynamic>(_ptr);
-                if (destructorTable[index] != nullptr)
+                auto& _destructor = Destructors()[index];
+                if (_destructor != nullptr)
                 {
-                    (destructorTable[index])->refcount -= 1;
-                    if (destructorTable[index]->refcount == 0)
-                        delete destructorTable[index];
+                    (_destructor)->refcount -= 1;
+                    if ((_destructor)->refcount == 0)
+                        delete (_destructor);
                 }
-                destructorTable[index] = new TypedDestructor<RealType>{ _ptr };
+                _destructor = new TypedDestructor<RealType>{ _ptr };
                 return _void;
             }
         }
@@ -193,7 +200,8 @@ namespace faster {
             else if constexpr (std::is_reference_v<Arg>)
                 return *reinterpret_cast<std::remove_reference_t<Arg>*>(arg);
             // If small, copy memory into an Arg object.
-            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>) {
+            else if constexpr (sizeof(Arg) <= sizeof(dynamic) && 
+                std::is_trivially_copyable_v<Arg> && std::is_trivially_constructible_v<Arg>) {
                 Arg _ret;
                 std::memcpy(&_ret, &arg, sizeof(Arg));
                 return _ret;
@@ -220,7 +228,7 @@ namespace faster {
             }
         }
 
-        dynamic m_Args[sizeof...(Args) + 1]; // already binded arguments
+        dynamic m_Args[sizeof...(Args) + 1]{ (Destructor*)nullInit<Args>::value... }; // already binded arguments
         Destructor* m_Destructors[sizeof...(Args) + 1]{ (Destructor*)nullInit<Args>::value... };
 
         inline size_t Size() const { return sizeof...(Args); }
@@ -238,16 +246,15 @@ namespace faster {
         // Finalize binding and call the function.
         inline Return Finalize() override {
             this->m_Finalized = true;
-            return _CallFun(m_IndexSeq);
+            dynamic* _ptr = this->m_Args;
+            return m_Fun(this->_ConvertFromDynamic<Args>(*_ptr++)...);
         }
 
         // Deep copy the binder
         inline _Binder<Return>* Copy() override {
             _FullBinder<T, Return(Args...)>* _binder = new _FullBinder<T, Return(Args...)>{ m_Fun };
-            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * sizeof...(Args));
-            memcpy(&_binder->m_Destructors[0], &this->m_Destructors[0], sizeof(dynamic) * sizeof...(Args));
+            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) + 1) * 2);
             for (int i = 0; i < sizeof...(Args); i++) if (this->m_Destructors[i] != nullptr) this->m_Destructors[i]->refcount++;
-            _binder->m_RefCount = 1;
             return _binder;
         }
 
@@ -258,15 +265,43 @@ namespace faster {
         };
 
     private:
-        static inline std::make_index_sequence<sizeof...(Args)> m_IndexSeq{};
         T m_Fun;
 
-        // Use pack expansion and an index sequence to cast the arguments back, and then call
-        template<std::size_t... Is>
-        inline Return _CallFun(std::index_sequence<Is...>&) {
-            return m_Fun(this->_ConvertFromDynamic<Args>(this->m_Args[sizeof...(Args)-Is-1])...);
+        template<typename T> friend class Function;
+    };
+
+    // Member binder is the same as a Full binder, but stores a member function pointer together with
+    // the reference to the object it should call it on.
+    template<typename, typename> struct _MemberBinder;
+    template<typename T, typename Return, typename ...Args>
+    struct _MemberBinder<T, Return(Args...)> : public _CallBinder<Return, Args...> {
+        _MemberBinder(Return(T::*function)(Args...), T& obj)
+            : m_Function(function), m_Obj(obj) {}
+
+        // Finalize binding and call the function.
+        inline Return Finalize() override {
+            this->m_Finalized = true;
+            dynamic* _ptr = this->m_Args;
+            return (m_Obj.*m_Function)(this->_ConvertFromDynamic<Args>(*_ptr++)...);
         }
 
+        // Deep copy the binder
+        inline _Binder<Return>* Copy() override {
+            _MemberBinder<T, Return(Args...)>* _binder = new _MemberBinder<T, Return(Args...)>{ m_Function, m_Obj };
+            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) + 1) * 2);
+            for (int i = 0; i < sizeof...(Args); i++) if (this->m_Destructors[i] != nullptr) this->m_Destructors[i]->refcount++;
+            return _binder;
+        }
+
+        virtual inline bool Lambda() { return true; }
+
+        virtual Return Call(Args&&...args) override {
+            return (m_Obj.*m_Function)(static_cast<Args&&>(args)...);
+        };
+
+    private:
+        T& m_Obj;
+        Return(T::* m_Function)(Args...);
         template<typename T> friend class Function;
     };
 
@@ -288,20 +323,26 @@ namespace faster {
 
         Function() {};
 
+        // Member function constructor
+        template<typename T>
+        Function(Return(T::* a)(Args...), T& t)
+            : m_Binder(new _MemberBinder<T, Return(Args...)>{ a, t }) {}
+
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type, 
             typename = std::enable_if_t<sizeof(T) >= 2>>
         Function(const T& t)
-            : m_Binder(new _FullBinder<T, typename std::_Deduce_signature<T>::type>{ t }) { m_Binder->m_RefCount++; }
+            : m_Binder(new _FullBinder<T, typename std::_Deduce_signature<T>::type>{ t }) { }
 
         // Lambda constructor
-        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
+        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && 
+            std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         Function(const T& t) 
-            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ (FunType)t }) { m_Binder->m_RefCount++; }
+            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ (FunType)t }) { }
 
         // Function pointer constructor
         Function(FunType fun) 
-            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ fun }) { m_Binder->m_RefCount++; }
+            : m_Binder(new _FullBinder<FunType, Return(Args...)>{ fun }) { }
 
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
@@ -309,16 +350,15 @@ namespace faster {
         auto operator =(const T& t) {
             Clean();
             m_Binder = new _FullBinder<T, typename std::_Deduce_signature<T>::type>{ t };
-            m_Binder->m_RefCount++;
             return *this;
         }
 
         // Lambda constructor
-        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
+        template<typename T, typename = std::enable_if_t<sizeof(T) == 1 && 
+            std::is_same_v<FunType, typename std::_Deduce_signature<T>::type*>>>
         auto operator =(const T& t) {
             Clean();
             m_Binder = new _FullBinder<FunType, Return(Args...)>{ (FunType)t };
-            m_Binder->m_RefCount++;
             return *this;
         }
 
@@ -326,7 +366,6 @@ namespace faster {
         auto operator=(FunType fun) {
             Clean();
             m_Binder = new _FullBinder<FunType, Return(Args...)>{ fun };
-            m_Binder->m_RefCount++;
             return *this;
         }
 
@@ -361,11 +400,18 @@ namespace faster {
 
         template<typename ...Tys, typename = std::enable_if_t<_CompatibleTPacks<TPack<Tys...>, TPack<Args...>>::same>>
         inline _SubFunction<sizeof...(Tys), Return, Args...> operator()(Tys&& ...tys) const {
-            // Optimization for direct call with all parameters
             if constexpr (sizeof...(Tys) == sizeof...(Args)) 
-                if (sizeof...(Args) == m_Binder->Size())
-                    if (!m_Binder->Lambda())
-                        return ((_FullBinder<FunType, Return(Tys...)>*)m_Binder)->m_Fun(static_cast<Tys&&>(tys)...);
+                // Optimization for direct call with all parameters
+                if (sizeof...(Args) == m_Binder->Size() && !m_Binder->Lambda())
+                    return ((_FullBinder<FunType, Return(Tys...)>*)m_Binder)->m_Fun(static_cast<Tys&&>(tys)...);                    
+                // If not all parameters, quickly apply without overhead of _ApplyBinder call and finalize.
+                else {
+                    size_t Is = 0;
+                    ((((_CallBinder<Return, Args...>*)m_Binder)->m_Args[sizeof...(Args) - Is - 1] =
+                        m_Binder->_ConvertToDynamic<Tys, Args>(
+                            static_cast<Tys&&>(tys), sizeof...(Args) - Is - 1), Is++), ...);
+                    return m_Binder->Finalize();
+                }
 
             // If it has been previously called, make a copy of the binder to make the new call unique.
             // Unless the call using this binder has been finalized
@@ -391,7 +437,7 @@ namespace faster {
         inline void _ApplyBinder(Tys&& ... tys, std::index_sequence<Is...>&) const {
             ((((_CallBinder<Return, Args...>*)m_Binder)->m_Args[sizeof...(Args) - Is - 1] =
                 m_Binder->_ConvertToDynamic<NthTypeOf<Is, Tys...>, NthTypeOf<Is, Args...>>(
-                    static_cast<NthTypeOf<Is, Tys...>&&>(tys), m_Binder->Destructors(), sizeof...(Args) - Is - 1)), ...);
+                    static_cast<NthTypeOf<Is, Tys...>&&>(tys), sizeof...(Args) - Is - 1)), ...);
         }
 
         void Clean() {
@@ -409,6 +455,10 @@ namespace faster {
     // Function constructor deduction guide for function pointers
     template <class Ret, class ...Args>
     Function(Ret(Args...))->Function<Ret(Args...)>;
+
+    // Function constructor deduction guide for member functions
+    template <class Ret, class T, class ...Args>
+    Function(Ret(T::* a)(Args...), T&)->Function<Ret(Args...)>;
 
     // Function constructor deduction guide for lambdas
     template <class _Fx>

@@ -171,7 +171,7 @@ namespace faster
 				};
 
 				For(n) {
-					int a = random();
+					volatile int a = random();
 					Thing b{ random() };
 					Thing c{ random() };
 					Thing d{ random() };
@@ -242,7 +242,7 @@ namespace faster
 			}
 			Assert(Thing::refcount == 0); 
 			Assert(Thing::constrcount == n + n * m * 4);
-			Assert(Thing::copycount == 15 * n * m);
+			Assert(Thing::copycount == 6 * n * m);
 			Assert(Thing::movecount == 0); // It shouldn't move any
 			Assert(_BinderBase::refcount == 0); // No binders left
 		}

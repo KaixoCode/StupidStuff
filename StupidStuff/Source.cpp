@@ -3,8 +3,8 @@
 #include "PartialApplication.hpp"
 #include <chrono> 
 #include <iomanip>
-//#include "PartialApplicationTests.hpp"
-//#include "FasterFunctionTests.hpp"
+#include "PartialApplicationTests.hpp"
+#include "FasterFunctionTests.hpp"
 #include "FasterFunction.hpp"
 #include "Parser.hpp"
 
@@ -15,11 +15,6 @@ void ConcatVector(std::vector<T>& a, std::vector<T>& b)
 {
     a.insert(a.end(), b.begin(), b.end());
 }
-
-template<typename T>
-struct Token{
-    T value;
-};
 
 struct MyParser : public BasicParser {
 
@@ -195,39 +190,50 @@ struct MyParser : public BasicParser {
     }
 };
 
+struct Object {
+    int val = 1;
+
+    void Add(int a, Thing b, Thing& c) {
+        val += a + b.v + c.v;
+    }
 
 
-
+};
 
 int main()
 {
-    IndexOfSame<std::vector<MyParser::ExprPart>, int, std::string, std::vector<MyParser::ExprPart>>::index;
-
     auto start = std::chrono::high_resolution_clock::now();
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << std::fixed << std::setprecision(10);
-    //PartialApplicationTests::Run();
-    //fun::FasterFunctionTests::Run();
-    std::cout << "current binder count: " << _BinderBase::refcount << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-    MyParser parser;
-    std::string_view num = "++a-b*!c*(3---3+5*33223252+(apple-juice*2+-3))";
-    auto resa = parser.expression(num);
-    stop = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << "parsing took: " << duration.count() * 0.000000001 << "s" << std::endl;
-    std::cout << "current binder count: " << _BinderBase::refcount << std::endl;
-    for (auto& i : resa.result)
-        i.Print();
-    MyParser::Expr& expr = resa.result;
+    PartialApplicationTests::Run();
+    fun::FasterFunctionTests::Run();
+    //std::cout << "current binder count: " << _BinderBase::refcount << std::endl;
+    //start = std::chrono::high_resolution_clock::now();
+    //MyParser parser;
+    //std::string_view num = "++a-b*!c*(3---3+5*33223252+(apple-juice*2+-3))";
+    //auto resa = parser.expression(num);
+    //stop = std::chrono::high_resolution_clock::now();
+    //duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    //std::cout << "parsing took: " << duration.count() * 0.000000001 << "s" << std::endl;
+    //std::cout << "current binder count: " << _BinderBase::refcount << std::endl;
+    //for (auto& i : resa.result)
+    //    i.Print();
+    //MyParser::Expr& expr = resa.result;
 
     //auto number = MyParser::factor(num);
     int a = 1;
 
     
-
-
+    {
+        Object obj;
+        Function member = { &Object::Add, obj };
+        Thing a{ 1 };
+        auto res1 = member(1);
+        auto res2 = res1(1);
+        res2(a);
+        int v = obj.val;
+    }
 
 
 
