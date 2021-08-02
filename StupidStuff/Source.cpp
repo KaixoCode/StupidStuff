@@ -227,7 +227,7 @@ int main()
     
     {
         Object obj;
-        Function member = { &Object::Add, obj };
+        Function member{ &Object::Add, obj };
         Thing a{ 1 };
         auto res1 = member(1);
         auto res2 = res1(1);
@@ -257,7 +257,7 @@ int main()
     Function addThings2 = lambda2;
     fun::Function fastThings2 = lambda2;
 
-    double n = 1000000;
+    double n = 10000000;
 
     std::cout << "New Func capture 6 calls" << std::endl;
     start = std::chrono::high_resolution_clock::now();

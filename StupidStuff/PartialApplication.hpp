@@ -216,10 +216,7 @@ namespace faster {
     
     // Binder without type info about what kind of functor it contains, only return and arg types.
     template<typename Return, typename ...Args>
-    struct _CallBinder : public _Binder<Return>
-    {
-        virtual Return Call(Args&&...) = 0;
-
+    struct _CallBinder : public _Binder<Return> {
         ~_CallBinder() {
             for (int i = 0; i < sizeof...(Args); i++) if (m_Destructors[i] != nullptr) {
                 m_Destructors[i]->refcount -= 1;
@@ -228,8 +225,8 @@ namespace faster {
             }
         }
 
-        dynamic m_Args[sizeof...(Args) + 1]{ (Destructor*)nullInit<Args>::value... }; // already binded arguments
-        Destructor* m_Destructors[sizeof...(Args) + 1]{ (Destructor*)nullInit<Args>::value... };
+        dynamic m_Args[sizeof...(Args) == 0 ? 1 : sizeof...(Args)]{ (Destructor*)nullInit<Args>::value... }; // already binded arguments
+        Destructor* m_Destructors[sizeof...(Args) == 0 ? 1 : sizeof...(Args)]{ (Destructor*)nullInit<Args>::value... };
 
         inline size_t Size() const { return sizeof...(Args); }
         inline Destructor** Destructors() override { return m_Destructors; };
@@ -253,16 +250,12 @@ namespace faster {
         // Deep copy the binder
         inline _Binder<Return>* Copy() override {
             _FullBinder<T, Return(Args...)>* _binder = new _FullBinder<T, Return(Args...)>{ m_Fun };
-            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) + 1) * 2);
+            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) == 0 ? 1 : sizeof...(Args)) * 2);
             for (int i = 0; i < sizeof...(Args); i++) if (this->m_Destructors[i] != nullptr) this->m_Destructors[i]->refcount++;
             return _binder;
         }
 
         virtual inline bool Lambda() { return !std::is_same_v<T, Return(*)(Args...)>; }
-        
-        virtual Return Call(Args&&...args) override {
-            return m_Fun(static_cast<Args&&>(args)...);
-        };
 
     private:
         T m_Fun;
@@ -288,16 +281,12 @@ namespace faster {
         // Deep copy the binder
         inline _Binder<Return>* Copy() override {
             _MemberBinder<T, Return(Args...)>* _binder = new _MemberBinder<T, Return(Args...)>{ m_Function, m_Obj };
-            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) + 1) * 2);
+            memcpy(&_binder->m_Args[0], &this->m_Args[0], sizeof(dynamic) * (sizeof...(Args) == 0 ? 1 : sizeof...(Args)) * 2);
             for (int i = 0; i < sizeof...(Args); i++) if (this->m_Destructors[i] != nullptr) this->m_Destructors[i]->refcount++;
             return _binder;
         }
 
         virtual inline bool Lambda() { return true; }
-
-        virtual Return Call(Args&&...args) override {
-            return (m_Obj.*m_Function)(static_cast<Args&&>(args)...);
-        };
 
     private:
         T& m_Obj;
@@ -343,7 +332,7 @@ namespace faster {
         // Function pointer constructor
         Function(FunType fun) 
             : m_Binder(new _FullBinder<FunType, Return(Args...)>{ fun }) { }
-
+        
         // Capturing lambda constructor
         template<typename T, typename = typename std::_Deduce_signature<T>::type,
             typename = std::enable_if_t<sizeof(T) >= 2>>
